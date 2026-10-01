@@ -1,0 +1,102 @@
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(1.5rem, 4vw, 3rem);
+}
+
+.column {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+}
+
+.columnTitle {
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.entry {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.entry:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.entryTitle {
+  font-weight: 600;
+  font-size: 0.96rem;
+}
+
+.entrySub {
+  margin-top: 0.2rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.entryMeta {
+  margin-top: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.languageList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.languageList li {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
+}
+
+.languageList li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.awardList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+.awardList li {
+  padding-left: 1.1rem;
+  position: relative;
+}
+
+.awardList li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-pink);
+}
+
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

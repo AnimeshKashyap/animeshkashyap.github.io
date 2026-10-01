@@ -1,0 +1,29 @@
+.wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * A thin veil of the page background color over the canvas keeps the
+ * network reading as ambient texture rather than fighting with foreground
+ * text for contrast — it fades with the theme automatically since it's
+ * just var(--bg).
+ */
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  opacity: 0.86;
+  transition: background-color 0.35s ease;
+}
