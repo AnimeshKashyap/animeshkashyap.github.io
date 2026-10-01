@@ -72,7 +72,7 @@ export const experience: ExperienceEntry[] = [
     highlights: [
       'Developed Infrastructure as Code using Pulumi with Node.js and TypeScript for cloud resource automation.',
       'Implemented business logic to dynamically scale cloud resources, reducing deployment times by 30% on production.',
-      'Built a scalable image distribution server compliant with DICOM standards for medical imagery.',
+      'Built a scalable image distribution server compliant with DICOM standards for medical imagery',
     ],
   },
   {
