@@ -17,8 +17,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(rootDir, 'index.html'),
-        v2: resolve(rootDir, 'v2/index.html'),
-        v3: resolve(rootDir, 'v3/index.html'),
         v4: resolve(rootDir, 'v4/index.html'),
       },
     },
