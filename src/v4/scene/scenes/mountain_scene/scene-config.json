@@ -1,6 +1,26 @@
 {
-  "background": { "x": 0, "y": 0, "scale": 1, "enabled": true },
-  "platform": { "x": 0, "y": 0, "scale": 1, "enabled": true },
-  "buildings": { "x": 0, "y": 0, "scale": 1, "spacing": 60, "enabled": true },
-  "character": { "x": 0, "y": 0, "enabled": true }
+  "background": {
+    "x": 0,
+    "y": -193,
+    "scale": 1.19,
+    "enabled": true
+  },
+  "platform": {
+    "x": 0,
+    "y": 84,
+    "scale": 3.76,
+    "enabled": true
+  },
+  "buildings": {
+    "x": 0,
+    "y": -436,
+    "scale": 0.57,
+    "spacing": 60,
+    "enabled": true
+  },
+  "character": {
+    "x": -222,
+    "y": -382,
+    "enabled": true
+  }
 }

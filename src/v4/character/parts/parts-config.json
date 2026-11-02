@@ -1,14 +1,16 @@
 {
   "head": {
-    "x": 16.7,
+    "x": 13.3,
     "y": 21.8,
     "rotate": -2.3,
-    "scale": 0.74,
+    "scale": 0.81,
     "zIndex": 0,
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": true
   },
   "hair": {
     "x": 4.9,
@@ -19,7 +21,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": false
   },
   "eye": {
     "x": 27.2,
@@ -30,7 +34,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": false
   },
   "eyebrow": {
     "x": 26.2,
@@ -41,7 +47,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": false
   },
   "ear": {
     "x": 2.2,
@@ -52,7 +60,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": false
   },
   "glasses": {
     "x": 18.4,
@@ -63,7 +73,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": false
   },
   "beard": {
     "x": 18.8,
@@ -74,7 +86,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": false
   },
   "torso": {
     "x": 4,
@@ -85,7 +99,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": true
   },
   "backpack": {
     "x": 0,
@@ -96,18 +112,22 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": false
   },
   "upper-arm-back": {
     "x": 0,
-    "y": -20.6,
+    "y": 31.1,
     "rotate": 0,
     "scale": 2.23,
     "zIndex": 0,
     "anchorX": 0,
-    "anchorY": 0,
-    "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "anchorY": 0.36,
+    "jointOffsetX": -4.4,
+    "jointOffsetY": 19.3,
+    "opacity": 1,
+    "enabled": true
   },
   "upper-arm-front": {
     "x": 0,
@@ -118,7 +138,9 @@
     "anchorX": 0,
     "anchorY": 0.36,
     "jointOffsetX": -4.4,
-    "jointOffsetY": 19.3
+    "jointOffsetY": 19.3,
+    "opacity": 1,
+    "enabled": true
   },
   "forearm-back": {
     "x": 0,
@@ -129,7 +151,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": true
   },
   "forearm-front": {
     "x": 0,
@@ -140,7 +164,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": true
   },
   "thigh-back": {
     "x": 10.8,
@@ -151,7 +177,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": true
   },
   "thigh-front": {
     "x": 10.8,
@@ -162,7 +190,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": true
   },
   "shin-back": {
     "x": 0,
@@ -173,7 +203,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": true
   },
   "shin-front": {
     "x": 0,
@@ -184,7 +216,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": true
   },
   "shoe-back": {
     "x": -16.3,
@@ -195,7 +229,9 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": true
   },
   "shoe-front": {
     "x": -16.3,
@@ -206,6 +242,34 @@
     "anchorX": 0,
     "anchorY": 0,
     "jointOffsetX": 0,
-    "jointOffsetY": 0
+    "jointOffsetY": 0,
+    "opacity": 1,
+    "enabled": true
+  },
+  "shadow-base": {
+    "x": 0,
+    "y": 0,
+    "rotate": 0,
+    "scale": 1.84,
+    "zIndex": 0,
+    "anchorX": 0,
+    "anchorY": 0,
+    "jointOffsetX": 0,
+    "jointOffsetY": 0,
+    "opacity": 0.72,
+    "enabled": true
+  },
+  "shadow-expanded": {
+    "x": 0,
+    "y": -3.6,
+    "rotate": 0,
+    "scale": 2.5,
+    "zIndex": 0,
+    "anchorX": 0,
+    "anchorY": 0,
+    "jointOffsetX": 0,
+    "jointOffsetY": 0,
+    "opacity": 0.65,
+    "enabled": true
   }
 }
