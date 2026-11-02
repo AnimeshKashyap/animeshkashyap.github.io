@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="300" viewBox="0 0 340 300">
+  <defs>
+    <pattern id="win5" width="42" height="52" patternUnits="userSpaceOnUse" x="10" y="10">
+      <rect x="4" y="6" width="30" height="38" fill="rgba(255,214,140,0.4)" />
+    </pattern>
+  </defs>
+  <!-- low, wide glass podium block (Vatika-style) -->
+  <rect x="0" y="0" width="340" height="300" fill="#1d2c42" />
+  <rect x="0" y="0" width="340" height="230" fill="url(#win5)" />
+  <rect x="0" y="224" width="340" height="6" fill="#0d1724" />
+  <!-- wide full-glass ground floor entrance with canopy -->
+  <rect x="20" y="236" width="300" height="10" fill="rgba(255,214,140,0.6)" />
+  <rect x="30" y="248" width="280" height="52" fill="rgba(180,220,235,0.38)" />
+</svg>

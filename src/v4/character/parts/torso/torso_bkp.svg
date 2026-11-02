@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -10 80 112">
+  <!-- pivot (0,0) = shoulder/collar centerline -->
+  <circle id="pivot" cx="0" cy="0" r="0.01" fill="none" />
+  <rect class="hoodie-body" x="-33" y="-6" width="66" height="102" rx="20" fill="#2d2f36" stroke="#14151a" stroke-width="2" />
+  <path class="hood" d="M -27,-4 Q 0,-20 29,-2 Q 23,10 0,4 Q -23,10 -27,-4 Z" fill="#23252b" />
+  <path class="shirt" d="M -10,-4 L 8,-4 L 2,12 L -4,12 Z" fill="#52555e" />
+  <line class="zip" x1="0" y1="10" x2="0" y2="90" stroke="#9aa0ab" stroke-width="2" stroke-dasharray="3 3" />
+  <rect class="pocket" x="-23" y="64" width="46" height="18" rx="6" fill="#23252b" />
+</svg>

@@ -23,6 +23,15 @@ export function Hero() {
           <a href={profile.resumeFile} className={styles.secondaryCta} download>
             Download résumé
           </a>
+          <a href={`${import.meta.env.BASE_URL}v2/`} className={styles.secondaryCta}>
+            Fly Nexus v2
+          </a>
+          <a href={`${import.meta.env.BASE_URL}v3/`} className={styles.secondaryCta}>
+            Operation v3
+          </a>
+          <a href={`${import.meta.env.BASE_URL}v4/`} className={styles.secondaryCta}>
+            Canvas v4
+          </a>
         </div>
 
         <dl className={styles.stats}>

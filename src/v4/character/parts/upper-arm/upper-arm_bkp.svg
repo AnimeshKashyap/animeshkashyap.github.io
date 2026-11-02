@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-14 -6 28 72">
+  <!-- pivot (0,0) = shoulder. Fades out ~72%-100% so it dissolves under the
+       forearm's fade-in at the elbow (same convention as thigh.svg). -->
+  <defs>
+    <linearGradient id="upperArmFade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="72%" stop-color="#2d2f36" />
+      <stop offset="100%" stop-color="#2d2f36" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <circle id="pivot" cx="0" cy="0" r="0.01" fill="none" />
+  <path d="M -8,0 C -9,14 -8,30 -7,42 C -6,50 -6,54 -5,58 L 5,58 C 6,54 6,50 7,42
+           C 8,30 9,14 8,0 C 4,-4 -4,-4 -8,0 Z"
+        fill="url(#upperArmFade)" stroke="#14151a" stroke-width="1.4" stroke-opacity="0.85" />
+</svg>

@@ -1,0 +1,53 @@
+/* Top-middle scene picker -- lists whatever sceneAssets.discoverScenes()
+   finds under scene/scenes, so a new scene folder shows up automatically. */
+.scene-selector {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  background: rgba(12, 16, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 7px 12px;
+  color: #eef1fa;
+  font: 13px/1.4 'Segoe UI', system-ui, sans-serif;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scene-selector label {
+  color: #a6adc4;
+  font-size: 11.5px;
+}
+
+.scene-selector select {
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  color-scheme: dark;
+}
+
+.scene-selector select option {
+  background: #10131f;
+  color: #eef1fa;
+}
+
+.scene-selector__next {
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.scene-selector__next:hover {
+  background: rgba(255, 255, 255, 0.16);
+}

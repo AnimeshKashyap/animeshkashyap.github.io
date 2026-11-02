@@ -1,0 +1,206 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 994 1284">
+  <defs>
+    <linearGradient id="skin" x1="0" y1="0" x2="1" y2=".8">
+      <stop offset="0" stop-color="#dc9168"/>
+      <stop offset=".32" stop-color="#f7b47f"/>
+      <stop offset=".7" stop-color="#ffc991"/>
+      <stop offset="1" stop-color="#e99a6d"/>
+    </linearGradient>
+    <linearGradient id="neck" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#c67c55"/>
+      <stop offset=".5" stop-color="#f6b17d"/>
+      <stop offset="1" stop-color="#e69a6e"/>
+    </linearGradient>
+    <linearGradient id="shadow" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#a9573d"/>
+      <stop offset="1" stop-color="#d9855d"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Neck and head silhouette -->
+  <path d="
+    M 385,710
+    L 570,748
+    L 575,930
+    Q 567,1000 533,1060
+    L 520,1210
+    Q 355,1215 85,1047
+    Q 188,958 211,840
+    Q 234,730 213,590
+    L 158,410
+    Q 137,280 225,157
+    Q 322,27 510,25
+    Q 700,20 820,130
+    Q 864,170 884,285
+    L 884,365
+    Q 867,399 866,423
+    Q 890,472 918,515
+    L 972,588
+    Q 984,611 958,627
+    L 917,642
+    Q 887,648 897,687
+    Q 910,716 892,744
+    Q 884,760 872,770
+    Q 887,799 869,824
+    Q 856,838 862,864
+    L 868,903
+    Q 864,935 837,950
+    Q 807,969 768,953
+    L 631,915
+    Q 598,906 574,937
+    Q 551,969 552,1034
+    L 560,1210
+    Q 395,1254 85,1047
+    Q 203,1000 252,845
+    Q 282,752 260,630
+    L 216,485
+    Q 190,420 158,410
+    Z"
+    fill="url(#skin)"
+    stroke="#633b2c"
+    stroke-width="7"
+    stroke-linejoin="round"/>
+
+  <!-- Scalp highlights -->
+  <path d="
+    M 235,159
+    Q 355,40 514,43
+    Q 704,35 816,151
+    L 865,286
+    Q 806,246 740,262
+    Q 590,304 463,294
+    Q 325,280 216,215
+    Z"
+    fill="#ffdbac" opacity=".25"/>
+
+  <!-- Forehead and temple shading -->
+  <path d="
+    M 214,220
+    Q 318,300 460,307
+    Q 610,324 745,278
+    L 865,361
+    Q 794,400 730,415
+    Q 572,391 433,420
+    Q 320,441 245,516
+    Q 203,398 214,220Z"
+    fill="#d98962" opacity=".20"/>
+
+  <!-- Brow ridge shadow, without eyebrow -->
+  <path d="
+    M 685,380
+    Q 776,336 857,364
+    Q 884,379 872,416
+    Q 826,398 790,414
+    Q 735,429 682,418
+    Z"
+    fill="url(#shadow)" opacity=".65"/>
+
+  <!-- Nose bridge -->
+  <path d="
+    M 858,405
+    Q 871,461 918,518
+    L 970,589
+    Q 986,610 953,624
+    Q 919,638 890,625
+    Q 870,615 875,594
+    Q 892,579 913,584
+    Q 938,592 950,581
+    Q 915,525 884,474
+    Q 857,435 858,405Z"
+    fill="#e99a6c" opacity=".85"/>
+
+  <!-- Nose highlight -->
+  <path d="
+    M 918,577
+    Q 943,574 957,588
+    Q 964,599 946,610
+    Q 922,618 900,610
+    Q 900,590 918,577Z"
+    fill="#ffd09c" opacity=".65"/>
+
+  <!-- Nostril -->
+  <path d="M 912,622 Q 943,604 971,617"
+    fill="none" stroke="#783e2c" stroke-width="7"
+    stroke-linecap="round"/>
+
+  <!-- Cheek plane -->
+  <path d="
+    M 389,457
+    Q 507,402 658,421
+    Q 756,435 846,488
+    Q 816,548 831,617
+    Q 842,673 861,721
+    Q 822,780 851,838
+    Q 867,897 832,935
+    Q 785,968 718,936
+    Q 580,893 452,837
+    Q 385,800 365,720
+    Q 337,608 389,457Z"
+    fill="#ffd09c" opacity=".20"/>
+
+  <!-- Jaw shadow -->
+  <path d="
+    M 373,745
+    Q 406,801 478,832
+    Q 599,890 738,937
+    Q 807,965 843,924
+    Q 821,974 770,953
+    Q 642,921 573,932
+    Q 548,956 547,1037
+    L 560,1210
+    Q 397,1254 85,1047
+    Q 190,965 212,842
+    Q 255,935 373,745Z"
+    fill="url(#shadow)" opacity=".48"/>
+
+  <!-- Neck muscle planes -->
+  <path d="
+    M 257,650
+    Q 300,775 278,911
+    Q 252,1017 180,1070
+    L 340,1150
+    Q 359,1048 347,956
+    Q 339,830 373,745
+    Z"
+    fill="#d88b62" opacity=".45"/>
+
+  <path d="
+    M 375,755
+    Q 415,871 423,1045
+    L 420,1214
+    L 515,1210
+    Q 493,1036 524,937
+    Q 489,875 455,846Z"
+    fill="#ffd09c" opacity=".22"/>
+
+  <!-- Neck central shadow -->
+  <path d="
+    M 454,858
+    Q 494,900 509,958
+    Q 493,1068 516,1209
+    L 460,1200
+    Q 465,1060 434,963Z"
+    fill="#b96c4d" opacity=".25"/>
+
+  <!-- Jaw contour -->
+  <path d="
+    M 374,744
+    Q 405,802 478,833
+    Q 608,894 741,936
+    Q 807,961 838,934"
+    fill="none" stroke="#a95d42" stroke-width="5"
+    opacity=".7" stroke-linecap="round"/>
+
+  <!-- Nose-to-face contour -->
+  <path d="
+    M 856,408
+    Q 866,454 899,497
+    Q 938,553 971,589"
+    fill="none" stroke="#bd704e" stroke-width="4"
+    opacity=".65" stroke-linecap="round"/>
+
+  <!-- Neck lower edge -->
+  <path d="M 85,1047 Q 310,1202 560,1210"
+    fill="none" stroke="#75432f" stroke-width="5"/>
+</svg>

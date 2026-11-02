@@ -14,6 +14,9 @@ export function Footer() {
               {link.label}
             </a>
           ))}
+          <a href={`${import.meta.env.BASE_URL}v2/`}>Nexus v2</a>
+          <a href={`${import.meta.env.BASE_URL}v3/`}>Operation v3</a>
+          <a href={`${import.meta.env.BASE_URL}v4/`}>Canvas v4</a>
           <a href="#top">Back to top ↑</a>
         </div>
       </div>

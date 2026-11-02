@@ -1,0 +1,15 @@
+---
+description: Minimize scope; confirm before structural changes
+alwaysApply: true
+---
+
+# Minimal scope — confirm before changing
+
+- Do not change code unless required for the task. Avoid drive-by refactors, docstring edits, renames, or new abstractions.
+- When the user describes a small change (e.g. try/except in a decorator, one parent try/except), implement only that — do not introduce new modules, wrappers, or orchestration layers unless they ask.
+- If a broader approach seems better, describe it and **wait for confirmation** before implementing.
+- When the user names a file, folder, or scope (e.g. “only `service.py`”, “do not change other files”), change **only** that scope. Do not edit callers, workflows, tests, or imports elsewhere to “fix” compile errors or wire new parameters unless the user explicitly asks or confirms.
+- If call sites or related files would need updates, **stop and ask** — briefly say what is broken or missing and what you would change; do not apply those edits until the user agrees.
+- Do not rewrite comments, docstrings, or response shapes unless explicitly requested.
+- Do not remove comments (including commented-out code or reference notes) unless absolutely necessary. Reference cleanup happens only when preparing to publish.
+- Prefer the smallest diff that meets the stated expectation.

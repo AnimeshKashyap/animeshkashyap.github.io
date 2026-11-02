@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-66 -6 46 106">
+  <!-- pivot (0,0) = shoulder centerline (same reference as torso.svg); bag sits
+       on the -x side since the character faces +x (right) -->
+  <circle id="pivot" cx="0" cy="0" r="0.01" fill="none" />
+  <rect class="bag" x="-53" y="0" width="28" height="80" rx="8" fill="#232428" stroke="#14151a" stroke-width="1.5" />
+  <path class="strap" d="M -29,-4 Q -47,6 -39,26" fill="none" stroke="#17181b" stroke-width="6" stroke-linecap="round" />
+</svg>

@@ -1,0 +1,251 @@
+/* Left-docked twin of ../customizer/panel.css's character sidebar -- same
+   look, mirrored to the other edge so both panels can be open at once. */
+.scene-customizer-toggle {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(12, 16, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #eef1fa;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 25;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.scene-customizer-toggle:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.scene-customizer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 320px;
+  max-width: 90vw;
+  background: rgba(12, 16, 28, 0.96);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  color: #eef1fa;
+  font: 13px/1.4 'Segoe UI', system-ui, sans-serif;
+  box-shadow: 12px 0 32px rgba(0, 0, 0, 0.45);
+  z-index: 20;
+  overflow-y: auto;
+  padding: 76px 18px 24px;
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+}
+
+.scene-customizer.is-open {
+  transform: translateX(0);
+}
+
+.scene-customizer__title {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  margin-bottom: 12px;
+}
+
+.scene-customizer__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.scene-customizer__title-row .scene-customizer__title {
+  margin-bottom: 0;
+}
+
+.scene-customizer__title-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.scene-customizer__icon-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  font: 11px ui-monospace, 'JetBrains Mono', monospace;
+  cursor: pointer;
+  padding: 0;
+}
+
+.scene-customizer__icon-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.scene-customizer__icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.scene-customizer__icon-btn:disabled:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.scene-customizer__title-status {
+  min-height: 14px;
+  font-size: 11.5px;
+  color: #7ee787;
+  margin-bottom: 10px;
+}
+
+.scene-customizer__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.scene-customizer__chip {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.scene-customizer__chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Any currently selected chip (multi-select included). */
+.scene-customizer__chip.is-selected {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: #22c55e;
+}
+
+/* The one selected chip whose values are shown/edited -- a brighter ring
+   on top of the shared .is-selected tint so it stands out when several
+   chips are selected at once. */
+.scene-customizer__chip.is-primary {
+  box-shadow: 0 0 0 2px #22c55e;
+}
+
+.scene-customizer__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scene-customizer__enabled-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #eef1fa;
+  cursor: pointer;
+}
+
+.scene-customizer__enabled-row input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: #22c55e;
+  cursor: pointer;
+}
+
+.scene-customizer__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+/* Disabled (not hidden) when the field isn't applicable to every
+   currently selected section -- see panel.css's identical pattern. */
+.scene-customizer__row.is-disabled {
+  opacity: 0.4;
+}
+
+.scene-customizer__row input:disabled {
+  cursor: not-allowed;
+}
+
+.scene-customizer__row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.scene-customizer__row span {
+  color: #a6adc4;
+  font-size: 11.5px;
+}
+
+.scene-customizer__row input[type='range'] {
+  width: 100%;
+  height: 22px;
+  margin: 2px 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.scene-customizer__row input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.scene-customizer__row input[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.scene-customizer__row input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid #eef1fa;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.scene-customizer__row input[type='range']::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid #eef1fa;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.scene-customizer__row input[type='number'] {
+  width: 72px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 3px 5px;
+  font: inherit;
+}
