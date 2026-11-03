@@ -14,7 +14,7 @@ import { createSceneRenderer } from './scene/sceneEngine'
 import { mountSceneSelector } from './scene/sceneSelector'
 import { mountSceneCustomizer } from './scene/sceneCustomizer'
 import type { SceneConfig } from './scene/sceneConfig'
-import { groundScreenY } from './scene/layout'
+import { groundScreenY, widthScale } from './scene/layout'
 import './styles.css'
 
 const container = document.querySelector<HTMLElement>('#app')
@@ -85,9 +85,19 @@ const updateWalkCycle = createWalkCycle(joints, sharedConfig)
 
 const CHARACTER_X_FRACTION = 0.25 // 25% in from the left edge, fixed -- walks in place
 
+// The character always walks at a fixed FRACTION of the viewport width in
+// from the left edge (scales naturally with window width), but the
+// per-scene x nudge (currentSceneConfig.character.x) is a flat pixel
+// value tuned on one specific window -- scale it by widthScale() so it
+// stays proportionally correct on any other width instead of eventually
+// pushing the character off the left edge on narrow windows (see
+// layout.ts's header comment). No equivalent is needed for offset.y: the
+// character's own rendered size never depends on stage height, so a flat
+// y nudge on top of the (height-tracking) ground line is already
+// correct at every height.
 function positionCharacter() {
   const offset = currentSceneConfig?.character ?? { x: 0, y: 0, enabled: true }
-  const x = stage.width * CHARACTER_X_FRACTION + offset.x
+  const x = stage.width * CHARACTER_X_FRACTION + offset.x * widthScale(stage.width)
   root.setAttribute('transform', `translate(${x}, ${groundScreenY(stage.height) - groundY + offset.y})`)
   root.style.display = offset.enabled ? '' : 'none'
 }

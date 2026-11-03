@@ -3,7 +3,7 @@
 // code needed. This is what makes adding a new scene just "add a folder".
 import { createSvgElement } from '../stage'
 import { CHAR_HEIGHT } from '../character/metrics'
-import { groundScreenY } from './layout'
+import { groundScreenY, heightScale } from './layout'
 import type { SceneLayer } from './types'
 import type { SceneAssets, ImageSize } from './sceneAssets'
 import type { SceneConfig } from './sceneConfig'
@@ -63,31 +63,48 @@ function buildStitchedLayer(
 }
 
 // Far backdrop: every frame scaled to fill the stage's height by default
-// (config.scale is a multiplier on top of that), anchored top-left + the
-// x/y offset controls. Slowest parallax layer.
+// (config.scale is a multiplier on top of that), BOTTOM-anchored so its
+// bottom edge always lines up with the viewport's bottom edge regardless
+// of window size -- any extra height from config.scale > 1 overflows off
+// the top, never leaving a gap below (see layout.ts's header comment for
+// why a flat y nudge on a height-proportional layer needs heightScale()).
+// Slowest parallax layer.
 function buildBackgroundLayer(assets: SceneAssets, sizes: LoadedSceneAssets, config: SceneConfig, stageHeight: number): SceneLayer {
+  const scaledY = config.background.y * heightScale(stageHeight)
   return buildStitchedLayer(
     assets.backgroundUrls,
     sizes.background,
     () => stageHeight * config.background.scale,
-    () => config.background.y,
+    (frameHeight) => stageHeight - frameHeight + scaledY,
     config.background.x,
     0.15,
     'scene-background',
   )
 }
 
-// Ground track the character walks on: every frame scaled to the same
-// sensible fraction of the viewport height by default, anchored so its TOP
-// sits at the shared ground line (y offset nudges it to line up with the
-// character's feet). Fastest parallax layer (matches apparent stride
-// speed).
+// Ground track the character walks on. Height is tied to CHAR_HEIGHT (the
+// character's own fixed, window-size-invariant scale) instead of
+// stageHeight -- same approach buildings already use, and for the same
+// reason: the platform's rendered size (and wherever its "ground
+// contact" line sits within the artwork) now never drifts relative to
+// the character as the window resizes, so the flat y nudge below can
+// stay flat (no heightScale() needed -- see layout.ts's header comment:
+// a flat offset only needs scaling when it corrects a quantity that
+// itself scales with the window, which this no longer does). 0.71
+// reproduces today's reference-window look exactly -- it's solved from
+// the OLD stageHeight-based formula at the reference window
+// (REFERENCE_STAGE_HEIGHT * 0.22 / CHAR_HEIGHT ~= 0.71), so
+// config.platform.scale keeps meaning what it always did there.
+// Anchored so its TOP sits at the shared ground line. Fastest parallax
+// layer (matches apparent stride speed).
+const PLATFORM_HEIGHT_RATIO = 0.71
+
 function buildPlatformLayer(assets: SceneAssets, sizes: LoadedSceneAssets, config: SceneConfig, stageHeight: number): SceneLayer {
   const groundY = groundScreenY(stageHeight)
   return buildStitchedLayer(
     assets.platformUrls,
     sizes.platform,
-    () => stageHeight * 0.22 * config.platform.scale,
+    () => CHAR_HEIGHT * PLATFORM_HEIGHT_RATIO * config.platform.scale,
     (frameHeight) => groundY - frameHeight + config.platform.y,
     config.platform.x,
     1,
