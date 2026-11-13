@@ -8,3 +8,5 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 );
+
+(typeof requestIdleCallback === 'function' ? requestIdleCallback : (cb: IdleRequestCallback) => setTimeout(() => cb({ didTimeout: true, timeRemaining: () => 0 }), 1))(() => import('./chatbot').then((m) => m.mountChatbot({ page: 'main' })));
