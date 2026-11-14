@@ -33,7 +33,7 @@ const CV =
   /\b(?:resume|resumé|résumé|curriculum vitae|\bcv\b|download (?:the |his |your )?(?:resume|cv|résumé))\b/;
 
 const EMAIL =
-  /\b(?:e-?mail|email (?:him|animesh)?|contact(?:\s+him)?|reach out|get in touch|send (?:an )?e?-?mail)\b/;
+  /\b(?:e-?mail|email (?:him|animesh)?|contact\s+him|reach out|get in touch|send (?:an )?e?-?mail)\b/;
 
 const LINKEDIN = /\blinked\s*in\b/;
 

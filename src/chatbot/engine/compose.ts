@@ -271,8 +271,16 @@ function formatAggregate(hits: SearchHit[]): string {
   return blocks.join('\n\n');
 }
 
+function isContactRecord(record: KnowledgeRecord): boolean {
+  return (
+    record.id === 'faq-contact' ||
+    record.id === 'profile-contact' ||
+    record.tags.includes('contact')
+  );
+}
+
 function actionsForRecords(records: readonly KnowledgeRecord[]): ActionId[] {
-  if (records.some((record) => record.type === 'unavailable')) {
+  if (records.some((record) => record.type === 'unavailable' || isContactRecord(record))) {
     return ['email'];
   }
   return [];
