@@ -1,8 +1,8 @@
-import { beforeAll, describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { CHATBOT_CONFIG } from '../config';
 import { getRecords } from '../knowledge';
 import { createSearcher } from './search';
-import { AWS_TERMS, SYNONYMS, canonicalize } from './synonyms';
+import { AWS_TERMS, canonicalize } from './synonyms';
 import type { KnowledgeRecord, KnowledgeRecordType } from '../types';
 
 const records = getRecords();
@@ -48,11 +48,6 @@ function unavailablePlaceholders(): KnowledgeRecord[] {
 }
 
 describe('createSearcher over getRecords()', () => {
-  beforeAll(() => {
-    if (SYNONYMS.pyhton === undefined) {
-      (SYNONYMS as Record<string, string>).pyhton = 'python';
-    }
-  });
 
   it('index build on first search completes within a reasonable time', () => {
     const fresh = createSearcher(getRecords());

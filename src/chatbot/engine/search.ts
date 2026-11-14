@@ -14,9 +14,20 @@ const FIELD_BOOST = {
   text: 1,
 } as const;
 
+/**
+ * Fuzzy ratio stays ~0.2. MiniSearch uses Levenshtein, so one adjacent swap
+ * costs 2, but `round(length * 0.2)` is only 1 for 6–7 character terms
+ * ("pyhton" would miss "python"). Those lengths use an absolute distance of 2.
+ */
+function fuzzyOption(term: string): number {
+  const ratio = 0.2;
+  const distance = Math.round(term.length * ratio);
+  return distance === 1 && term.length >= 6 ? 2 : ratio;
+}
+
 const MINI_SEARCH_OPTIONS = {
   boost: { ...FIELD_BOOST },
-  fuzzy: 0.2,
+  fuzzy: fuzzyOption,
   prefix: true,
 };
 
