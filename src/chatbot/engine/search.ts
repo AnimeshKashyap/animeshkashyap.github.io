@@ -321,16 +321,10 @@ function exactRecords(index: BuiltIndex, tokens: readonly string[]): KnowledgeRe
 
   const specificHits = union(specificGroups);
   const typeHits = union(typeGroups);
-  if (specificHits.length === 0) {
-    return typeHits;
-  }
-  if (typeHits.length === 0) {
+  if (specificHits.length > 0) {
     return specificHits;
   }
-
-  const allowedTypes = new Set(typeHits.map((record) => record.type));
-  const filtered = specificHits.filter((record) => allowedTypes.has(record.type));
-  return filtered.length > 0 ? filtered : specificHits;
+  return typeHits;
 }
 
 function toConfidence(rawScore: number): number {
@@ -346,7 +340,7 @@ function resolveLimit(options: SearchOptions | undefined): number {
   if (!Number.isFinite(requested) || requested <= 0) {
     return 0;
   }
-  return Math.floor(requested);
+  return Math.min(Math.floor(requested), DEFAULT_LIMIT);
 }
 
 function fuzzyHits(index: BuiltIndex, tokens: readonly string[], limit: number): SearchHit[] {
@@ -384,13 +378,13 @@ function runSearch(index: BuiltIndex, tokens: readonly string[], limit: number):
       left.record.title.localeCompare(right.record.title) ||
       left.record.id.localeCompare(right.record.id),
   );
-  return hits;
+  return hits.slice(0, limit);
 }
 
 /**
  * Build a searcher over `records`. The MiniSearch index is created on the first
  * `search` call. `search` normalizes the query, returns every record for an
- * exact technology or company hit, and otherwise the top `limit` (default 5).
+ * exact technology or company hit (up to 5), and otherwise the top matches (max 5).
  * `score` is a confidence in 0..1.
  */
 export function createSearcher(records: readonly KnowledgeRecord[]): Searcher {
