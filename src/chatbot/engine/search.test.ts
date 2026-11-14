@@ -149,3 +149,51 @@ describe('createSearcher over getRecords()', () => {
     expect(hits.find((h) => h.record.id === id)!.score).toBeGreaterThan(0);
   });
 });
+
+describe('createSearcher edge cases', () => {
+  it.each([
+    ['empty string', ''],
+    ['whitespace only', '   \t\n  '],
+    ['punctuation only', '!!! ??? ---'],
+    ['stopwords only', 'the and of'],
+  ])('%s query returns no hits', (_label, query) => {
+    expect(searcher.search(query)).toEqual([]);
+  });
+
+  it('empty record collection returns no hits for a non-empty query', () => {
+    const empty = createSearcher([]);
+    expect(empty.search('python')).toEqual([]);
+    expect(empty.search('experience', { limit: 5 })).toEqual([]);
+  });
+
+  it.each([
+    ['zero', { limit: 0 }],
+    ['negative', { limit: -3 }],
+    ['NaN', { limit: Number.NaN }],
+    ['positive Infinity', { limit: Number.POSITIVE_INFINITY }],
+  ])('limit %s yields no hits even for a strong query', (_label, options) => {
+    expect(searcher.search('python', options)).toEqual([]);
+  });
+
+  it('fractional limit floors and caps at five', () => {
+    const hits = searcher.search('python', { limit: 2.9 });
+    expect(hits.length).toBeLessThanOrEqual(2);
+    expect(hits.length).toBe(Math.min(2, recordsForPythonAcrossTypes().length));
+  });
+
+  it('limit above five still returns at most five hits', () => {
+    const hits = searcher.search('python', { limit: 99.2 });
+    expect(hits.length).toBeLessThanOrEqual(MAX_HITS);
+    expect(hits.length).toBe(Math.min(MAX_HITS, recordsForPythonAcrossTypes().length));
+  });
+
+  it('fuzzy hit confidence scores are finite and within [0, 1]', () => {
+    const hits = searcher.search('pyhton', { limit: MAX_HITS });
+    expect(hits.length).toBeGreaterThan(0);
+    for (const hit of hits) {
+      expect(Number.isFinite(hit.score)).toBe(true);
+      expect(hit.score).toBeGreaterThanOrEqual(0);
+      expect(hit.score).toBeLessThanOrEqual(1);
+    }
+  });
+});
