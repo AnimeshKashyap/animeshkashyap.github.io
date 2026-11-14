@@ -1,4 +1,7 @@
 import MiniSearch from 'minisearch';
+// Sole production import of `minisearch`. Keep this module behind the chatbot
+// panel's dynamic import (launcher → `import('./panel/panel')` → engine), not in
+// `chatbot/index`, launcher, or page entry chunks, so MiniSearch stays lazy.
 import type { KnowledgeRecord, KnowledgeRecordType } from '../types';
 import { AWS_TERMS, canonicalize, normalize } from './synonyms';
 
