@@ -23,6 +23,8 @@ export const CHATBOT_RETRIEVAL_THRESHOLD = 0.35;
 export const CHATBOT_CONFIG = {
   greeting:
     "Hi — I'm the portfolio assistant for Animesh Kashyap. Ask about his experience, skills, projects, education, or how to get in touch.",
+  /** Short copy for the once-per-session bubble beside the launcher button. */
+  launcherBubbleText: 'Ask about experience, skills, projects, or how to get in touch.',
   suggestedQuestions: [
     "What is Animesh's professional background?",
     'Which technologies and skills does he focus on?',
