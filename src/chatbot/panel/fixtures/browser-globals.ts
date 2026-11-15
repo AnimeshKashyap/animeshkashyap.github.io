@@ -414,6 +414,9 @@ export function installBrowserGlobals(): BrowserGlobalsHandle {
   const documentMock = {
     body: createElement('body'),
     createElement,
+    createElementNS(_namespace: string, qualifiedName: string): MockElement {
+      return createElement(qualifiedName);
+    },
     getElementById(id: string): MockElement | null {
       return elementById.get(id) ?? null;
     },

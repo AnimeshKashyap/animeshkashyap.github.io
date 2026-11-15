@@ -153,6 +153,12 @@
   outline-offset: 2px;
 }
 
+.chat-panel__icon-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
 .chat-panel__body {
   display: flex;
   flex-direction: column;

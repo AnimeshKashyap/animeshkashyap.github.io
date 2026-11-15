@@ -277,7 +277,7 @@ describe('chat panel', () => {
     await vi.waitFor(() => expect(getPanel(shadow).textContent).toContain('Old message'));
 
     const clearBtn = [...collectDescendants(getPanel(shadow))].find(
-      (node) => node.getAttribute('aria-label') === 'Clear conversation',
+      (node) => node.getAttribute('aria-label') === 'Reset chat',
     );
     clearBtn?.click();
 
@@ -310,7 +310,7 @@ describe('chat panel', () => {
     });
 
     const clearBtn = [...collectDescendants(getPanel(shadow))].find(
-      (node) => node.getAttribute('aria-label') === 'Clear conversation',
+      (node) => node.getAttribute('aria-label') === 'Reset chat',
     );
     clearBtn?.click();
 

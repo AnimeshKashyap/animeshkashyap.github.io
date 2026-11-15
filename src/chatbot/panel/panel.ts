@@ -187,12 +187,44 @@ function getPageContext(): ActionContext {
   return { page: 'main' };
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
 function createIconButton(className: string, label: string): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = className;
   button.setAttribute('aria-label', label);
   return button;
+}
+
+function createRotateCcwIcon(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+
+  const stroke = {
+    stroke: 'currentColor',
+    'stroke-width': '2',
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+  };
+
+  const arc = document.createElementNS(SVG_NS, 'path');
+  arc.setAttribute('d', 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8');
+  for (const [name, value] of Object.entries(stroke)) {
+    arc.setAttribute(name, value);
+  }
+
+  const arrow = document.createElementNS(SVG_NS, 'path');
+  arrow.setAttribute('d', 'M3 3v5h5');
+  for (const [name, value] of Object.entries(stroke)) {
+    arrow.setAttribute(name, value);
+  }
+
+  svg.append(arc, arrow);
+  return svg;
 }
 
 function loadEngine(): Promise<ChatEngine> {
@@ -309,8 +341,8 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   const actions = document.createElement('div');
   actions.className = 'chat-panel__actions';
 
-  const clearBtn = createIconButton('chat-panel__icon-btn', 'Clear conversation');
-  clearBtn.textContent = '⌫';
+  const clearBtn = createIconButton('chat-panel__icon-btn', 'Reset chat');
+  clearBtn.appendChild(createRotateCcwIcon());
 
   const closeBtn = createIconButton('chat-panel__icon-btn', 'Close chat');
   closeBtn.textContent = '×';
