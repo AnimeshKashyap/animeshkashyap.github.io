@@ -210,19 +210,11 @@ function launcherHostStyles(page: 'main' | 'v4'): string {
   }
   return `:host {
   all: initial;
-  --bg-raised: #0b0f1a;
-  --bg-card: rgba(255, 255, 255, 0.035);
-  --border: rgba(255, 255, 255, 0.08);
-  --text-primary: #eef1f8;
-  --text-secondary: #9aa3b8;
-  --accent-cyan: #5eead4;
-  --accent-violet: #a78bfa;
-  --radius-md: 14px;
 }
 `;
 }
 
-function buildLauncherStyles(page: 'main' | 'v4'): string {
+export function buildLauncherStyles(page: 'main' | 'v4'): string {
   return `${launcherHostStyles(page)}${LAUNCHER_STYLE_BODY}`;
 }
 
