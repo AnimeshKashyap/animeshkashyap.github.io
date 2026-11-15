@@ -41,6 +41,28 @@ function searchHitsInRetrievalOrder(records: readonly KnowledgeRecord[]): Search
   }));
 }
 
+function experienceHit(
+  id: string,
+  company: string,
+  period: string,
+  score: number,
+): SearchHit {
+  return {
+    record: {
+      id,
+      type: 'experience',
+      title: `Engineer — ${company}`,
+      text: `Role: Engineer\nCompany: ${company}\nPeriod: ${period}`,
+      tags: ['experience'],
+      source: `Experience: ${company}`,
+      available: true,
+    },
+    score,
+  };
+}
+
+const AGGREGATE_EXPERIENCE_QUERY = 'Summarize his work experience.';
+
 describe('composeReply aggregate experience chronology', () => {
   it('lists experience bullets and source chips newest-first (not retrieval-score order)', () => {
     const chronology = experienceRecordsChronology();
@@ -77,5 +99,59 @@ describe('composeReply aggregate experience chronology', () => {
     expect(companiesFromAggregateText(reply.text)).toEqual(
       expectedOrder.map((source) => source.replace(/^Experience: /u, '')),
     );
+  });
+
+  it('ranks Present and Current end dates ahead of closed roles', () => {
+    const hits = [
+      experienceHit('exp-closed', 'Closed Co', 'Jan 2019 — Dec 2019', 0.99),
+      experienceHit('exp-present', 'Present Co', 'Jan 2020 — Present', 0.98),
+      experienceHit('exp-current', 'Current Co', 'Jun 2021 — Current', 0.97),
+    ];
+    const reply = composeReply(hits, AGGREGATE_EXPERIENCE_QUERY);
+    const companies = companiesFromAggregateText(reply.text);
+    expect(companies).toEqual(['Current Co', 'Present Co', 'Closed Co']);
+    expect(reply.sources.map((chip) => chip.label)).toEqual([
+      'Experience: Current Co',
+      'Experience: Present Co',
+      'Experience: Closed Co',
+    ]);
+  });
+
+  it('keeps retrieval order when experience start dates tie', () => {
+    const hits = [
+      experienceHit('exp-first', 'Alpha Corp', 'Jan 2022 — Jun 2022', 0.99),
+      experienceHit('exp-second', 'Beta Corp', 'Jan 2022 — Dec 2022', 0.98),
+    ];
+    const reply = composeReply(hits, AGGREGATE_EXPERIENCE_QUERY);
+    const companies = companiesFromAggregateText(reply.text);
+    expect(companies).toEqual(['Alpha Corp', 'Beta Corp']);
+    expect(reply.sources.map((chip) => chip.id)).toEqual(['exp-first', 'exp-second']);
+  });
+
+  it('does not reorder skill records without Period', () => {
+    const skillHit = (
+      id: string,
+      title: string,
+      score: number,
+    ): SearchHit => ({
+      record: {
+        id,
+        type: 'skill',
+        title,
+        text: 'Item A\nItem B',
+        tags: [],
+        source: `Skills: ${title}`,
+        available: true,
+      },
+      score,
+    });
+    const hits = [
+      skillHit('skill-z', 'Backend', 1),
+      skillHit('skill-a', 'Frontend', 0.99),
+    ];
+    const reply = composeReply(hits, 'Which technologies and skills does he focus on?');
+    expect(reply.sources.map((chip) => chip.id)).toEqual(['skill-z', 'skill-a']);
+    expect(reply.text).toMatch(/^• Backend:/u);
+    expect(reply.text).toMatch(/\n• Frontend:/u);
   });
 });

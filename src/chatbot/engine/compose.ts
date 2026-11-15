@@ -325,9 +325,6 @@ function compareRecordsByPeriodStart(
   if (leftKey.start !== rightKey.start) {
     return rightKey.start - leftKey.start;
   }
-  if (leftKey.end !== rightKey.end) {
-    return rightKey.end - leftKey.end;
-  }
   return (stableOrder.get(left.id) ?? 0) - (stableOrder.get(right.id) ?? 0);
 }
 
