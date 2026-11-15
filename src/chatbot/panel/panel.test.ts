@@ -86,6 +86,7 @@ describe('chat panel', () => {
     const panel = getPanel(shadow);
     expect(panel.hasAttribute('hidden')).toBe(false);
     expect(launcher.getAttribute('aria-expanded')).toBe('true');
+    expect(launcher.getAttribute('aria-label')).toBe('Close chat');
     expect(shadow.querySelector('.chat-panel__send')?.disabled).toBe(true);
   });
 
@@ -329,6 +330,7 @@ describe('chat panel', () => {
 
     expect(panel.hasAttribute('hidden')).toBe(true);
     expect(launcher.getAttribute('aria-expanded')).toBe('false');
+    expect(launcher.getAttribute('aria-label')).toBe('Open chat');
     expect(browser.getFocusedElement()).toBe(launcher);
   });
 
@@ -352,11 +354,13 @@ describe('chat panel', () => {
 
     expect(panel.hasAttribute('hidden')).toBe(true);
     expect(launcher.getAttribute('aria-expanded')).toBe('false');
+    expect(launcher.getAttribute('aria-label')).toBe('Open chat');
     expect(browser.getFocusedElement()).toBe(launcher);
     expect(browser.sessionData.get(HISTORY_KEY)).toBeTruthy();
 
     togglePanel();
     await vi.waitFor(() => expect(isPanelOpen()).toBe(true));
+    expect(launcher.getAttribute('aria-label')).toBe('Close chat');
     expect(panel.textContent).toContain('Hello');
     expect(panel.textContent).toContain('Hi there');
   });
@@ -372,6 +376,8 @@ describe('chat panel', () => {
     minimizeBtn?.click();
     expect(panel.classList.contains('chat-panel--minimized')).toBe(true);
     expect(panel.hasAttribute('hidden')).toBe(false);
+    expect(launcher.getAttribute('aria-label')).toBe('Close chat');
+    expect(launcher.getAttribute('aria-expanded')).toBe('true');
 
     const closeBtn = [...collectDescendants(panel)].find(
       (node) => node.getAttribute('aria-label') === 'Close chat',
@@ -380,6 +386,7 @@ describe('chat panel', () => {
 
     expect(panel.hasAttribute('hidden')).toBe(true);
     expect(launcher.getAttribute('aria-expanded')).toBe('false');
+    expect(launcher.getAttribute('aria-label')).toBe('Open chat');
     expect(browser.getFocusedElement()).toBe(launcher);
   });
 

@@ -59,6 +59,7 @@ function syncLauncherExpanded(expanded: boolean): void {
   const launcher = getLauncherButton(shadow);
   if (launcher !== null) {
     launcher.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    launcher.setAttribute('aria-label', expanded ? 'Close chat' : 'Open chat');
   }
 }
 

@@ -116,7 +116,7 @@ describe('mountLauncher greeting bubble', () => {
     const { shadow, launcher } = mountLauncherOnPage('v4');
 
     expect(getBubble(shadow)).not.toBeNull();
-    expect(launcher.getAttribute('aria-label')).toBe('Open portfolio assistant on character view');
+    expect(launcher.getAttribute('aria-label')).toBe('Open chat');
   });
 
   it('does not show a bubble on v4 when the session flag exists', () => {
