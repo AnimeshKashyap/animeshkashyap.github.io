@@ -1,8 +1,4 @@
-const LAUNCHER_STYLES = `
-:host {
-  all: initial;
-}
-
+const LAUNCHER_STYLE_BODY = `
 .launcher {
   position: fixed;
   left: max(16px, env(safe-area-inset-left, 0px));
@@ -84,6 +80,28 @@ const CHAT_ICON_SVG = `<svg class="launcher__icon" xmlns="http://www.w3.org/2000
   <path d="M7.5 8.25h9m-9 3H12m-6.75 9.75 1.664.89 2.23.596.09.055.199-.055 1.664-.89H18a2.25 2.25 0 0 0 2.25-2.25V7.5A2.25 2.25 0 0 0 18 5.25H6A2.25 2.25 0 0 0 3.75 7.5v9.75A2.25 2.25 0 0 0 6 20.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
+function launcherHostStyles(page: 'main' | 'v4'): string {
+  if (page === 'v4') {
+    return `:host {
+  all: initial;
+  color-scheme: dark;
+  --accent-cyan: #3b82f6;
+  --accent-violet: #60a5fa;
+  --accent-gradient: linear-gradient(120deg, var(--accent-cyan), var(--accent-violet));
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+`;
+  }
+  return `:host {
+  all: initial;
+}
+`;
+}
+
+function buildLauncherStyles(page: 'main' | 'v4'): string {
+  return `${launcherHostStyles(page)}${LAUNCHER_STYLE_BODY}`;
+}
+
 function launcherAriaLabel(page: 'main' | 'v4'): string {
   if (page === 'v4') {
     return 'Open portfolio assistant on character view';
@@ -95,7 +113,7 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
   const shadow = host.attachShadow({ mode: 'open' });
 
   const style = document.createElement('style');
-  style.textContent = LAUNCHER_STYLES;
+  style.textContent = buildLauncherStyles(page);
   shadow.appendChild(style);
 
   const button = document.createElement('button');

@@ -1,3 +1,19 @@
+:host([data-chatbot-page='v4']) {
+  color-scheme: dark;
+  --bg: #0b1026;
+  --bg-raised: #10131f;
+  --bg-card: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.12);
+  --text-primary: #eef1fa;
+  --text-secondary: #a6adc4;
+  --accent-cyan: #3b82f6;
+  --accent-violet: #60a5fa;
+  --accent-gradient: linear-gradient(120deg, var(--accent-cyan), var(--accent-violet));
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --radius-md: 14px;
+  --radius-lg: 22px;
+}
+
 .chat-panel {
   position: fixed;
   left: 0;
