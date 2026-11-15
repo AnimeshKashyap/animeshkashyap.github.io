@@ -239,7 +239,112 @@ const SECTION_LABEL: Partial<Record<KnowledgeRecordType, string>> = {
   education: 'Education',
 };
 
-function formatAggregate(hits: SearchHit[]): string {
+const PERIOD_RANGE_SPLIT = /\s*[—–-]\s*/u;
+const ONGOING_END = /\b(?:present|current|ongoing)\b/ui;
+
+const MONTH_TO_INDEX: Record<string, number> = {
+  jan: 1,
+  feb: 2,
+  mar: 3,
+  apr: 4,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  aug: 8,
+  sep: 9,
+  oct: 10,
+  nov: 11,
+  dec: 12,
+};
+
+const DATED_AGGREGATE_TYPES: ReadonlySet<KnowledgeRecordType> = new Set([
+  'experience',
+  'project',
+]);
+
+function parsePeriodToken(token: string): number | undefined {
+  const trimmed = token.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+  if (ONGOING_END.test(trimmed)) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  const monthYear = /^([A-Za-z]{3,})\s+(\d{4})$/u.exec(trimmed);
+  if (monthYear !== null) {
+    const month = MONTH_TO_INDEX[monthYear[1]!.slice(0, 3).toLowerCase()];
+    const year = Number(monthYear[2]);
+    if (month !== undefined && Number.isFinite(year)) {
+      return year * 100 + month;
+    }
+  }
+  const yearOnly = /^(\d{4})$/u.exec(trimmed);
+  if (yearOnly !== null) {
+    const year = Number(yearOnly[1]);
+    if (Number.isFinite(year)) {
+      return year * 100;
+    }
+  }
+  return undefined;
+}
+
+function periodSortKey(period: string): { start: number; end: number } | undefined {
+  const parts = period.split(PERIOD_RANGE_SPLIT);
+  const start = parsePeriodToken(parts[0] ?? '');
+  if (start === undefined) {
+    return undefined;
+  }
+  const endRaw = parts.length > 1 ? (parts[1] ?? '').trim() : parts[0] ?? '';
+  const end = parsePeriodToken(endRaw) ?? start;
+  return { start, end };
+}
+
+function compareRecordsByPeriodStart(
+  left: KnowledgeRecord,
+  right: KnowledgeRecord,
+  stableOrder: ReadonlyMap<string, number>,
+): number {
+  const leftPeriod = fieldValue(left.text, 'Period');
+  const rightPeriod = fieldValue(right.text, 'Period');
+  const leftKey =
+    leftPeriod !== undefined ? periodSortKey(leftPeriod) : undefined;
+  const rightKey =
+    rightPeriod !== undefined ? periodSortKey(rightPeriod) : undefined;
+
+  if (leftKey === undefined && rightKey === undefined) {
+    return (
+      (stableOrder.get(left.id) ?? 0) - (stableOrder.get(right.id) ?? 0)
+    );
+  }
+  if (leftKey === undefined) {
+    return 1;
+  }
+  if (rightKey === undefined) {
+    return -1;
+  }
+  if (leftKey.start !== rightKey.start) {
+    return rightKey.start - leftKey.start;
+  }
+  if (leftKey.end !== rightKey.end) {
+    return rightKey.end - leftKey.end;
+  }
+  return (stableOrder.get(left.id) ?? 0) - (stableOrder.get(right.id) ?? 0);
+}
+
+function stableHitOrder(hits: readonly SearchHit[]): Map<string, number> {
+  const order = new Map<string, number>();
+  for (let index = 0; index < hits.length; index += 1) {
+    const id = hits[index]!.record.id;
+    if (!order.has(id)) {
+      order.set(id, index);
+    }
+  }
+  return order;
+}
+
+function recordsByTypeFromHits(
+  hits: readonly SearchHit[],
+): Map<KnowledgeRecordType, KnowledgeRecord[]> {
   const byType = new Map<KnowledgeRecordType, KnowledgeRecord[]>();
   for (const hit of hits) {
     const group = byType.get(hit.record.type);
@@ -249,15 +354,49 @@ function formatAggregate(hits: SearchHit[]): string {
       group.push(hit.record);
     }
   }
+  return byType;
+}
 
-  const blocks: string[] = [];
-  const multipleTypes = byType.size > 1;
+function recordsInAggregateOrder(hits: readonly SearchHit[]): KnowledgeRecord[] {
+  const byType = recordsByTypeFromHits(hits);
+  const stableOrder = stableHitOrder(hits);
+  const ordered: KnowledgeRecord[] = [];
 
   for (const type of AGGREGATE_SECTION_ORDER) {
     const records = byType.get(type);
     if (records === undefined || records.length === 0) {
       continue;
     }
+    const section =
+      DATED_AGGREGATE_TYPES.has(type) && records.length > 1
+        ? [...records].sort((left, right) =>
+            compareRecordsByPeriodStart(left, right, stableOrder),
+          )
+        : records;
+    ordered.push(...section);
+  }
+
+  return ordered;
+}
+
+function formatAggregate(hits: SearchHit[]): string {
+  const byType = recordsByTypeFromHits(hits);
+  const stableOrder = stableHitOrder(hits);
+
+  const blocks: string[] = [];
+  const multipleTypes = byType.size > 1;
+
+  for (const type of AGGREGATE_SECTION_ORDER) {
+    const raw = byType.get(type);
+    if (raw === undefined || raw.length === 0) {
+      continue;
+    }
+    const records =
+      DATED_AGGREGATE_TYPES.has(type) && raw.length > 1
+        ? [...raw].sort((left, right) =>
+            compareRecordsByPeriodStart(left, right, stableOrder),
+          )
+        : raw;
     const lines = records.map((record) => `• ${aggregateLine(record)}`);
     if (multipleTypes) {
       const label = SECTION_LABEL[type];
@@ -407,7 +546,10 @@ export function composeReply(hits: SearchHit[], query: string): Reply {
     return lowConfidenceReply();
   }
 
-  const records = hits.map((hit) => hit.record);
+  const records =
+    hits.length === 1
+      ? hits.map((hit) => hit.record)
+      : recordsInAggregateOrder(hits);
   const text =
     hits.length === 1
       ? formatSingleRecord(hits[0]!.record)
