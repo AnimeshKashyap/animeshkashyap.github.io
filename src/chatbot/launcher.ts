@@ -106,6 +106,8 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
   button.className = 'launcher';
   button.setAttribute('aria-label', launcherAriaLabel(page));
   button.setAttribute('aria-expanded', 'false');
+  button.setAttribute('aria-haspopup', 'dialog');
+  button.setAttribute('aria-controls', 'portfolio-chat-panel');
   button.innerHTML = CHAT_ICON_SVG;
 
   button.addEventListener('click', () => {

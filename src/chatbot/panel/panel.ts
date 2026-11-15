@@ -1,14 +1,22 @@
 import panelCss from './panel.css?inline';
+import { CHATBOT_CONFIG } from '../config';
+import { runAction, type ActionContext } from '../engine/actions';
+import type { ActionId } from '../types';
 import {
   appendBotMessage,
   appendUserMessage,
+  appendWelcomeMessage,
   clearMessageLog,
   createMessageLog,
   setTypingVisible,
+  type MessageHandlers,
 } from './messages';
 import type { ChatEngine } from '../types';
 
 const CHATBOT_HOST_ID = 'portfolio-chatbot-host';
+export const CHAT_PANEL_ID = 'portfolio-chat-panel';
+
+const QUICK_ACTION_IDS: ActionId[] = ['cv', 'email', 'linkedin', 'github', 'projects'];
 
 type PanelElements = {
   root: HTMLElement;
@@ -18,6 +26,7 @@ type PanelElements = {
   input: HTMLInputElement;
   send: HTMLButtonElement;
   minimizeBtn: HTMLButtonElement;
+  handlers: MessageHandlers;
 };
 
 let panelMounted = false;
@@ -45,6 +54,15 @@ function syncLauncherExpanded(expanded: boolean): void {
   if (launcher !== null) {
     launcher.setAttribute('aria-expanded', expanded ? 'true' : 'false');
   }
+}
+
+function getPageContext(): ActionContext {
+  const host = document.getElementById(CHATBOT_HOST_ID);
+  const page = host?.getAttribute('data-chatbot-page');
+  if (page === 'v4') {
+    return { page: 'v4' };
+  }
+  return { page: 'main' };
 }
 
 function createIconButton(className: string, label: string): HTMLButtonElement {
@@ -81,12 +99,18 @@ function focusInput(input: HTMLInputElement): void {
   input.focus();
 }
 
-async function handleSend(elements: PanelElements): Promise<void> {
+function ensureWelcome(elements: PanelElements): void {
+  if (elements.log.childElementCount === 0) {
+    appendWelcomeMessage(elements.log, elements.handlers);
+  }
+}
+
+async function handleQuery(elements: PanelElements, query: string): Promise<void> {
   if (busy) {
     return;
   }
-  const query = elements.input.value.trim();
-  if (query.length === 0) {
+  const trimmed = query.trim();
+  if (trimmed.length === 0) {
     return;
   }
 
@@ -94,15 +118,15 @@ async function handleSend(elements: PanelElements): Promise<void> {
   elements.input.disabled = true;
   updateSendDisabled(elements.input, elements.send);
 
-  appendUserMessage(elements.log, query);
+  appendUserMessage(elements.log, trimmed);
   elements.input.value = '';
   updateSendDisabled(elements.input, elements.send);
   setTypingVisible(elements.typing, true);
 
   try {
     const engine = await loadEngine();
-    const reply = await engine.ask(query);
-    appendBotMessage(elements.log, reply);
+    const reply = await engine.ask(trimmed);
+    appendBotMessage(elements.log, reply, elements.handlers);
   } finally {
     setTypingVisible(elements.typing, false);
     busy = false;
@@ -112,12 +136,40 @@ async function handleSend(elements: PanelElements): Promise<void> {
   }
 }
 
+async function handleSend(elements: PanelElements): Promise<void> {
+  await handleQuery(elements, elements.input.value);
+}
+
+function mountQuickActionBar(page: ActionContext): HTMLElement {
+  const bar = document.createElement('div');
+  bar.className = 'chat-panel__quick-actions';
+  bar.setAttribute('role', 'toolbar');
+  bar.setAttribute('aria-label', 'Quick actions');
+
+  for (const id of QUICK_ACTION_IDS) {
+    const config = CHATBOT_CONFIG.actions[id];
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'chat-chip chat-chip--quick';
+    button.textContent = config.label;
+    button.addEventListener('click', () => {
+      runAction(id, page);
+    });
+    bar.appendChild(button);
+  }
+
+  return bar;
+}
+
 function mountPanel(shadow: ShadowRoot): PanelElements {
   const style = document.createElement('style');
   style.textContent = panelCss;
   shadow.appendChild(style);
 
+  const page = getPageContext();
+
   const root = document.createElement('div');
+  root.id = CHAT_PANEL_ID;
   root.className = 'chat-panel';
   root.setAttribute('role', 'dialog');
   root.setAttribute('aria-modal', 'true');
@@ -167,6 +219,8 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   }
   typing.append(typingLabel, dots);
 
+  const quickActions = mountQuickActionBar(page);
+
   const form = document.createElement('form');
   form.className = 'chat-panel__form';
   form.setAttribute('aria-label', 'Send a message');
@@ -187,9 +241,6 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   send.disabled = true;
 
   form.append(input, send);
-  body.append(log, typing, form);
-  root.append(header, body);
-  shadow.appendChild(root);
 
   const elements: PanelElements = {
     root,
@@ -199,7 +250,24 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
     input,
     send,
     minimizeBtn,
+    handlers: {
+      onSuggestion: () => {},
+      onAction: () => {},
+    },
   };
+
+  elements.handlers = {
+    onSuggestion: (query) => {
+      void handleQuery(elements, query);
+    },
+    onAction: (id) => {
+      runAction(id, getPageContext());
+    },
+  };
+
+  body.append(log, typing, quickActions, form);
+  root.append(header, body);
+  shadow.appendChild(root);
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -225,6 +293,7 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
       return;
     }
     clearMessageLog(log);
+    ensureWelcome(elements);
     focusInput(input);
   });
 
@@ -243,6 +312,8 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
     }
   });
 
+  ensureWelcome(elements);
+
   return elements;
 }
 
@@ -255,6 +326,7 @@ function showPanel(elements: PanelElements): void {
     setMinimized(elements.root, false);
     elements.minimizeBtn.setAttribute('aria-label', 'Minimize chat');
   }
+  ensureWelcome(elements);
   focusInput(elements.input);
 }
 
