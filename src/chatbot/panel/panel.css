@@ -1,14 +1,30 @@
 /*
- * z-index 30 (launcher + panel + greeting bubble, same shadow stack):
- * Audited fixed/sticky layers in src/components and src/v4:
- * - NetworkBackground: fixed, z-index 0
- * - Hero sections: z-index 1 (in-flow, not fixed)
- * - NavBar .header: sticky top, z-index 50; mobile .nav: fixed below header (inherits header stacking)
- * - v4 sceneSelector / sceneCustomizer / customizer panel + crosshair: fixed, z-index 20–25
- * - v4 jsonModal overlay: fixed, z-index 40
- * Chosen 30: above v4 customizer side panels (20–25), below jsonModal (40) and NavBar (50).
- * At 360px / 768px / 1280px the chatbot anchors bottom-left with safe-area insets; the open
- * mobile nav and sticky header occupy the top band only, so no overlap with launcher or panel.
+ * z-index 30 (launcher + panel + greeting bubble, same shadow stack).
+ *
+ * Fixed/sticky audit (src/components, src/v4) — every layer checked:
+ * - NetworkBackground: position fixed, z-index 0 (full-viewport backdrop)
+ * - Hero sections: z-index 1 in-flow only (not fixed/sticky; noted for stacking context)
+ * - NavBar .header: position sticky top, z-index 50
+ * - NavBar .nav (max-width 760px): position fixed top 68px when menu open; stacks under header (50)
+ * - v4 char-customizer-toggle: fixed top-right, z-index 25
+ * - v4 .char-customizer panel: fixed right edge, z-index 20
+ * - v4 scene-customizer-toggle: fixed top-left, z-index 25
+ * - v4 .scene-customizer panel: fixed left edge, z-index 20
+ * - v4 .scene-selector: fixed top center, z-index 25
+ * - v4 .char-anchor-crosshair-layer: fixed inset 0, z-index 25; present only while anchor sliders drag
+ * - v4 .json-modal-backdrop: fixed inset 0, z-index 40
+ *
+ * Chatbot at 30: above v4 panels/toggles (20–25), below jsonModal (40) and NavBar (50).
+ *
+ * Static layout reasoning — no visual/browser verification:
+ * - Launcher: fixed bottom-left with safe-area (launcher.ts); panel/greeting share z-index 30.
+ * - 360px (panel default / max-width 479px): full-width bottom sheet from bottom; NavBar + optional
+ *   mobile nav occupy top band (header + nav from 68px); v4 UI is top corners/center only — vertical
+ *   separation from bottom-anchored chatbot; side panels max-width 90vw stay on edges, not over launcher.
+ * - 768px (min-width 480px): panel is 380×560 fixed above launcher (bottom offset includes 56px + 12px gap);
+ *   same top-band vs bottom-left split; wider stage does not move chatbot into v4 toggle rows (top 16px).
+ * - 1280px: same rules as 768px for chatbot; v4 side panels remain edge-docked; no CSS places fixed
+ *   chatbot UI in the top overlay band where NavBar/v4 controls live.
  */
 
 :host([data-chatbot-page='v4']) {
