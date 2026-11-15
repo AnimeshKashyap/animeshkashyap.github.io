@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CHATBOT_CONFIG } from './config';
 import { buildLauncherStyles, mountLauncher } from './launcher';
+import { togglePanel } from './panel/panel';
 import {
   installBrowserGlobals,
   type BrowserGlobalsHandle,
@@ -12,7 +13,7 @@ const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
 const LAUNCHER_BUBBLE_AUTO_HIDE_MS = 8000;
 
 vi.mock('./panel/panel', () => ({
-  openPanel: vi.fn(),
+  togglePanel: vi.fn(),
 }));
 
 function mountLauncherOnPage(page: 'main' | 'v4'): {
@@ -81,6 +82,7 @@ describe('mountLauncher greeting bubble', () => {
 
   beforeEach(() => {
     browser = installBrowserGlobals();
+    vi.mocked(togglePanel).mockClear();
   });
 
   afterEach(() => {
@@ -116,7 +118,7 @@ describe('mountLauncher greeting bubble', () => {
     const { shadow, launcher } = mountLauncherOnPage('v4');
 
     expect(getBubble(shadow)).not.toBeNull();
-    expect(launcher.getAttribute('aria-label')).toBe('Open portfolio assistant on character view');
+    expect(launcher.getAttribute('aria-label')).toBe('Open chat');
   });
 
   it('does not show a bubble on v4 when the session flag exists', () => {
@@ -138,13 +140,27 @@ describe('mountLauncher greeting bubble', () => {
     expect(browser.sessionData.get(LAUNCHER_BUBBLE_SESSION_KEY)).toBe('1');
   });
 
-  it('hides the bubble when the launcher is clicked', () => {
+  it('hides the bubble when the launcher is clicked', async () => {
     const { launcher, shadow } = mountLauncherOnPage('main');
     const bubble = getBubble(shadow);
 
     launcher.click();
 
     expect(bubble?.hasAttribute('hidden')).toBe(true);
+    await vi.waitFor(() => {
+      expect(togglePanel).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('calls togglePanel once when the launcher is clicked and no bubble is shown', async () => {
+    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
+
+    const { launcher } = mountLauncherOnPage('main');
+    launcher.click();
+
+    await vi.waitFor(() => {
+      expect(togglePanel).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('auto-hides the bubble after the configured timeout', () => {

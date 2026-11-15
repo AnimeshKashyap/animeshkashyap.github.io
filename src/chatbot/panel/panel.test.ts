@@ -12,6 +12,7 @@ import {
 import { makeReply } from './fixtures/replies';
 
 const HISTORY_KEY = 'portfolio-chatbot-history:main';
+const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
 
 const engineBehavior = {
   ask: vi.fn<(query: string) => Promise<Reply>>(),
@@ -31,7 +32,10 @@ function collectDescendants(root: MockElement): MockElement[] {
   return nodes;
 }
 
-async function loadPanelApi(): Promise<{ openPanel: () => void }> {
+async function loadPanelApi(): Promise<{
+  openPanel: () => void;
+  isPanelOpen: () => boolean;
+}> {
   return import('./panel');
 }
 
@@ -57,13 +61,14 @@ function getPanel(shadow: MockShadowRoot): MockElement {
 describe('chat panel', () => {
   let browser: BrowserGlobalsHandle;
   let openPanel: () => void;
+  let isPanelOpen: () => boolean;
 
   beforeEach(async () => {
     browser = installBrowserGlobals();
     vi.resetModules();
     engineBehavior.ask.mockReset();
     engineBehavior.ask.mockResolvedValue(makeReply({ text: 'Assistant response' }));
-    ({ openPanel } = await loadPanelApi());
+    ({ openPanel, isPanelOpen } = await loadPanelApi());
   });
 
   afterEach(() => {
@@ -80,6 +85,7 @@ describe('chat panel', () => {
     const panel = getPanel(shadow);
     expect(panel.hasAttribute('hidden')).toBe(false);
     expect(launcher.getAttribute('aria-expanded')).toBe('true');
+    expect(launcher.getAttribute('aria-label')).toBe('Close chat');
     expect(shadow.querySelector('.chat-panel__send')?.disabled).toBe(true);
   });
 
@@ -323,7 +329,52 @@ describe('chat panel', () => {
 
     expect(panel.hasAttribute('hidden')).toBe(true);
     expect(launcher.getAttribute('aria-expanded')).toBe('false');
+    expect(launcher.getAttribute('aria-label')).toBe('Open chat');
     expect(browser.getFocusedElement()).toBe(launcher);
+  });
+
+  it('launcher open, close, and reopen keeps history and syncs focus and aria each step', async () => {
+    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
+    const { launcher, shadow } = mountHost();
+
+    expect(launcher.getAttribute('aria-expanded')).toBe('false');
+    expect(launcher.getAttribute('aria-label')).toBe('Open chat');
+
+    launcher.click();
+    await vi.waitFor(() => expect(isPanelOpen()).toBe(true));
+
+    const panel = getPanel(shadow);
+    const input = shadow.querySelector('.chat-panel__input') as MockElement;
+    expect(panel.hasAttribute('hidden')).toBe(false);
+    expect(launcher.getAttribute('aria-expanded')).toBe('true');
+    expect(launcher.getAttribute('aria-label')).toBe('Close chat');
+    expect(browser.getFocusedElement()).toBe(input);
+
+    input.value = 'Hello';
+    const form = shadow.querySelector('.chat-panel__form') as MockElement;
+    engineBehavior.ask.mockResolvedValueOnce(makeReply({ text: 'Hi there' }));
+    form.dispatchEvent('submit');
+    await vi.waitFor(() => expect(engineBehavior.ask).toHaveBeenCalled());
+    expect(browser.sessionData.get(HISTORY_KEY)).toBeTruthy();
+
+    launcher.click();
+    await vi.waitFor(() => expect(isPanelOpen()).toBe(false));
+
+    expect(panel.hasAttribute('hidden')).toBe(true);
+    expect(launcher.getAttribute('aria-expanded')).toBe('false');
+    expect(launcher.getAttribute('aria-label')).toBe('Open chat');
+    expect(browser.getFocusedElement()).toBe(launcher);
+    expect(browser.sessionData.get(HISTORY_KEY)).toBeTruthy();
+
+    launcher.click();
+    await vi.waitFor(() => expect(isPanelOpen()).toBe(true));
+
+    expect(panel.hasAttribute('hidden')).toBe(false);
+    expect(launcher.getAttribute('aria-expanded')).toBe('true');
+    expect(launcher.getAttribute('aria-label')).toBe('Close chat');
+    expect(browser.getFocusedElement()).toBe(input);
+    expect(panel.textContent).toContain('Hello');
+    expect(panel.textContent).toContain('Hi there');
   });
 
   it('closes via header control and minimizes without closing', () => {
@@ -337,6 +388,8 @@ describe('chat panel', () => {
     minimizeBtn?.click();
     expect(panel.classList.contains('chat-panel--minimized')).toBe(true);
     expect(panel.hasAttribute('hidden')).toBe(false);
+    expect(launcher.getAttribute('aria-label')).toBe('Close chat');
+    expect(launcher.getAttribute('aria-expanded')).toBe('true');
 
     const closeBtn = [...collectDescendants(panel)].find(
       (node) => node.getAttribute('aria-label') === 'Close chat',
@@ -345,6 +398,7 @@ describe('chat panel', () => {
 
     expect(panel.hasAttribute('hidden')).toBe(true);
     expect(launcher.getAttribute('aria-expanded')).toBe('false');
+    expect(launcher.getAttribute('aria-label')).toBe('Open chat');
     expect(browser.getFocusedElement()).toBe(launcher);
   });
 

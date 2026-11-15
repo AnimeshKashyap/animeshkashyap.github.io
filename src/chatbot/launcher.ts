@@ -218,13 +218,6 @@ export function buildLauncherStyles(page: 'main' | 'v4'): string {
   return `${launcherHostStyles(page)}${LAUNCHER_STYLE_BODY}`;
 }
 
-function launcherAriaLabel(page: 'main' | 'v4'): string {
-  if (page === 'v4') {
-    return 'Open portfolio assistant on character view';
-  }
-  return 'Open portfolio assistant';
-}
-
 function launcherBubbleSeen(): boolean {
   try {
     return sessionStorage.getItem(LAUNCHER_BUBBLE_SESSION_KEY) === '1';
@@ -304,7 +297,7 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'launcher';
-  button.setAttribute('aria-label', launcherAriaLabel(page));
+  button.setAttribute('aria-label', 'Open chat');
   button.setAttribute('aria-expanded', 'false');
   button.setAttribute('aria-haspopup', 'dialog');
   button.setAttribute('aria-controls', 'portfolio-chat-panel');
@@ -318,8 +311,8 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
     } else if (!launcherBubbleSeen()) {
       markLauncherBubbleSeen();
     }
-    void import('./panel/panel').then(({ openPanel }) => {
-      openPanel();
+    void import('./panel/panel').then(({ togglePanel }) => {
+      togglePanel();
     });
   });
 
