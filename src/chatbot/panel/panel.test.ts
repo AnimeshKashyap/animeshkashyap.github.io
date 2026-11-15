@@ -393,6 +393,24 @@ describe('chat panel', () => {
     expect(browser.getFocusedElement()).toBe(launcher);
   });
 
+  it('exposes CSS tooltips on header Reset and Close without title attributes', () => {
+    const { shadow } = mountHost();
+    openPanel();
+
+    const panel = getPanel(shadow);
+    const resetBtn = [...collectDescendants(panel)].find(
+      (node) => node.getAttribute('aria-label') === 'Reset chat',
+    );
+    const closeBtn = [...collectDescendants(panel)].find(
+      (node) => node.getAttribute('aria-label') === 'Close chat',
+    );
+
+    expect(resetBtn?.getAttribute('data-tooltip')).toBe('Reset chat');
+    expect(closeBtn?.getAttribute('data-tooltip')).toBe('Close chat');
+    expect(resetBtn?.hasAttribute('title')).toBe(false);
+    expect(closeBtn?.hasAttribute('title')).toBe(false);
+  });
+
   it('renders five quick actions in the toolbar', () => {
     const { shadow } = mountHost();
     openPanel();

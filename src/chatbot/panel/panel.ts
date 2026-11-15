@@ -194,6 +194,7 @@ function createIconButton(className: string, label: string): HTMLButtonElement {
   button.type = 'button';
   button.className = className;
   button.setAttribute('aria-label', label);
+  button.setAttribute('data-tooltip', label);
   return button;
 }
 
