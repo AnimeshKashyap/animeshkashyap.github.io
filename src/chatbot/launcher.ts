@@ -285,6 +285,7 @@ function maybeMountLauncherBubble(wrap: HTMLElement): LauncherBubbleState | unde
 
   bubble.append(text, dismiss);
   wrap.appendChild(bubble);
+  markLauncherBubbleSeen();
 
   const state: LauncherBubbleState = { bubble, autoHideId: undefined };
 
