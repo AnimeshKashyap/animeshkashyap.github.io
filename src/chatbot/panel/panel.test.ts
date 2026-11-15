@@ -12,6 +12,7 @@ import {
 import { makeReply } from './fixtures/replies';
 
 const HISTORY_KEY = 'portfolio-chatbot-history:main';
+const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
 
 const engineBehavior = {
   ask: vi.fn<(query: string) => Promise<Reply>>(),
@@ -33,7 +34,6 @@ function collectDescendants(root: MockElement): MockElement[] {
 
 async function loadPanelApi(): Promise<{
   openPanel: () => void;
-  togglePanel: () => void;
   isPanelOpen: () => boolean;
 }> {
   return import('./panel');
@@ -61,7 +61,6 @@ function getPanel(shadow: MockShadowRoot): MockElement {
 describe('chat panel', () => {
   let browser: BrowserGlobalsHandle;
   let openPanel: () => void;
-  let togglePanel: () => void;
   let isPanelOpen: () => boolean;
 
   beforeEach(async () => {
@@ -69,7 +68,7 @@ describe('chat panel', () => {
     vi.resetModules();
     engineBehavior.ask.mockReset();
     engineBehavior.ask.mockResolvedValue(makeReply({ text: 'Assistant response' }));
-    ({ openPanel, togglePanel, isPanelOpen } = await loadPanelApi());
+    ({ openPanel, isPanelOpen } = await loadPanelApi());
   });
 
   afterEach(() => {
@@ -334,20 +333,29 @@ describe('chat panel', () => {
     expect(browser.getFocusedElement()).toBe(launcher);
   });
 
-  it('launcher click while open closes like the header Close control and keeps history', async () => {
+  it('launcher open, close, and reopen keeps history and syncs focus and aria each step', async () => {
+    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
     const { launcher, shadow } = mountHost();
-    openPanel();
+
+    expect(launcher.getAttribute('aria-expanded')).toBe('false');
+    expect(launcher.getAttribute('aria-label')).toBe('Open chat');
+
+    launcher.click();
+    await vi.waitFor(() => expect(isPanelOpen()).toBe(true));
 
     const panel = getPanel(shadow);
     const input = shadow.querySelector('.chat-panel__input') as MockElement;
+    expect(panel.hasAttribute('hidden')).toBe(false);
+    expect(launcher.getAttribute('aria-expanded')).toBe('true');
+    expect(launcher.getAttribute('aria-label')).toBe('Close chat');
+    expect(browser.getFocusedElement()).toBe(input);
+
     input.value = 'Hello';
     const form = shadow.querySelector('.chat-panel__form') as MockElement;
     engineBehavior.ask.mockResolvedValueOnce(makeReply({ text: 'Hi there' }));
     form.dispatchEvent('submit');
     await vi.waitFor(() => expect(engineBehavior.ask).toHaveBeenCalled());
-
     expect(browser.sessionData.get(HISTORY_KEY)).toBeTruthy();
-    expect(isPanelOpen()).toBe(true);
 
     launcher.click();
     await vi.waitFor(() => expect(isPanelOpen()).toBe(false));
@@ -358,9 +366,13 @@ describe('chat panel', () => {
     expect(browser.getFocusedElement()).toBe(launcher);
     expect(browser.sessionData.get(HISTORY_KEY)).toBeTruthy();
 
-    togglePanel();
+    launcher.click();
     await vi.waitFor(() => expect(isPanelOpen()).toBe(true));
+
+    expect(panel.hasAttribute('hidden')).toBe(false);
+    expect(launcher.getAttribute('aria-expanded')).toBe('true');
     expect(launcher.getAttribute('aria-label')).toBe('Close chat');
+    expect(browser.getFocusedElement()).toBe(input);
     expect(panel.textContent).toContain('Hello');
     expect(panel.textContent).toContain('Hi there');
   });
