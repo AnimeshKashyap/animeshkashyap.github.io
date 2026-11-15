@@ -155,6 +155,25 @@
   border-bottom-left-radius: 4px;
 }
 
+.chat-msg__bubble--reveal > .chat-msg__line,
+.chat-msg__bubble--reveal > .chat-msg__list {
+  opacity: 0;
+  transform: translateY(4px);
+  animation: chat-msg-part-reveal 320ms ease forwards;
+}
+
+@keyframes chat-msg-part-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .chat-msg__line {
   margin: 0;
 }
@@ -378,5 +397,12 @@
   .chat-panel__typing-dots span {
     animation: none;
     opacity: 0.7;
+  }
+
+  .chat-msg__bubble--reveal > .chat-msg__line,
+  .chat-msg__bubble--reveal > .chat-msg__list {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }

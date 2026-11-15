@@ -6,6 +6,46 @@ export type MessageHandlers = {
   onAction: (id: ActionId) => void;
 };
 
+export type AppendBotMessageOptions = {
+  reveal?: boolean;
+};
+
+const REVEAL_PART_DELAY_MS = 70;
+const REVEAL_PART_DURATION_MS = 320;
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+async function revealBubbleText(bubble: HTMLElement): Promise<void> {
+  if (prefersReducedMotion()) {
+    return;
+  }
+
+  const parts = [...bubble.children] as HTMLElement[];
+  if (parts.length === 0) {
+    return;
+  }
+
+  bubble.classList.add('chat-msg__bubble--reveal');
+  for (let index = 0; index < parts.length; index += 1) {
+    parts[index].style.animationDelay = `${index * REVEAL_PART_DELAY_MS}ms`;
+  }
+
+  const totalMs = (parts.length - 1) * REVEAL_PART_DELAY_MS + REVEAL_PART_DURATION_MS;
+  await delay(totalMs);
+  bubble.classList.remove('chat-msg__bubble--reveal');
+  for (const part of parts) {
+    part.style.removeProperty('animation-delay');
+  }
+}
+
 function scrollLogToBottom(log: HTMLElement): void {
   log.scrollTop = log.scrollHeight;
 }
@@ -132,20 +172,11 @@ export function appendUserMessage(log: HTMLElement, text: string): void {
   scrollLogToBottom(log);
 }
 
-export function appendBotMessage(
-  log: HTMLElement,
+function appendBotExtras(
+  row: HTMLElement,
   reply: Reply,
   handlers: MessageHandlers,
 ): void {
-  const row = document.createElement('div');
-  row.className = 'chat-msg chat-msg--bot';
-
-  const bubble = document.createElement('div');
-  bubble.className = 'chat-msg__bubble';
-  appendFormattedText(bubble, reply.text);
-
-  row.appendChild(bubble);
-
   if (reply.sources.length > 0) {
     const sources = document.createElement('div');
     sources.className = 'chat-msg__sources';
@@ -186,8 +217,31 @@ export function appendBotMessage(
     }
     row.appendChild(followUps);
   }
+}
 
+export async function appendBotMessage(
+  log: HTMLElement,
+  reply: Reply,
+  handlers: MessageHandlers,
+  options: AppendBotMessageOptions = {},
+): Promise<void> {
+  const reveal = options.reveal !== false;
+
+  const row = document.createElement('div');
+  row.className = 'chat-msg chat-msg--bot';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-msg__bubble';
+  appendFormattedText(bubble, reply.text);
+
+  row.appendChild(bubble);
   log.appendChild(row);
+
+  if (reveal) {
+    await revealBubbleText(bubble);
+  }
+
+  appendBotExtras(row, reply, handlers);
   scrollLogToBottom(log);
 }
 

@@ -11,12 +11,17 @@ import {
   setTypingVisible,
   type MessageHandlers,
 } from './messages';
-import type { ChatEngine } from '../types';
+import type { ChatEngine, Reply } from '../types';
 
 const CHATBOT_HOST_ID = 'portfolio-chatbot-host';
 export const CHAT_PANEL_ID = 'portfolio-chat-panel';
 
 const QUICK_ACTION_IDS: ActionId[] = ['cv', 'email', 'linkedin', 'github', 'projects'];
+const CHAT_HISTORY_STORAGE_PREFIX = 'portfolio-chatbot-history';
+
+type HistoryEntry =
+  | { kind: 'user'; text: string }
+  | { kind: 'bot'; reply: Reply };
 
 type PanelElements = {
   root: HTMLElement;
@@ -35,6 +40,7 @@ let panelMinimized = false;
 let panelElements: PanelElements | undefined;
 let enginePromise: Promise<ChatEngine> | undefined;
 let busy = false;
+let messageHistory: HistoryEntry[] = [];
 
 function getChatbotShadow(): ShadowRoot | null {
   const host = document.getElementById(CHATBOT_HOST_ID);
@@ -54,6 +60,125 @@ function syncLauncherExpanded(expanded: boolean): void {
   if (launcher !== null) {
     launcher.setAttribute('aria-expanded', expanded ? 'true' : 'false');
   }
+}
+
+function focusLauncher(): void {
+  const shadow = getChatbotShadow();
+  if (shadow === null) {
+    return;
+  }
+  const launcher = getLauncherButton(shadow);
+  launcher?.focus();
+}
+
+function historyStorageKey(): string {
+  const page = getPageContext().page;
+  return `${CHAT_HISTORY_STORAGE_PREFIX}:${page}`;
+}
+
+function isValidReply(value: unknown): value is Reply {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.text === 'string' &&
+    Array.isArray(record.sources) &&
+    Array.isArray(record.actions) &&
+    Array.isArray(record.suggestions) &&
+    typeof record.confident === 'boolean'
+  );
+}
+
+function parseStoredHistory(raw: string): HistoryEntry[] | null {
+  try {
+    const data: unknown = JSON.parse(raw);
+    if (!Array.isArray(data)) {
+      return null;
+    }
+
+    const entries: HistoryEntry[] = [];
+    for (const item of data) {
+      if (typeof item !== 'object' || item === null) {
+        return null;
+      }
+      const record = item as Record<string, unknown>;
+      if (record.kind === 'user' && typeof record.text === 'string') {
+        entries.push({ kind: 'user', text: record.text });
+        continue;
+      }
+      if (record.kind === 'bot' && isValidReply(record.reply)) {
+        entries.push({ kind: 'bot', reply: record.reply });
+        continue;
+      }
+      return null;
+    }
+
+    return entries;
+  } catch {
+    return null;
+  }
+}
+
+function loadMessageHistoryFromStorage(): HistoryEntry[] {
+  try {
+    const raw = sessionStorage.getItem(historyStorageKey());
+    if (raw === null) {
+      return [];
+    }
+    const parsed = parseStoredHistory(raw);
+    if (parsed === null) {
+      sessionStorage.removeItem(historyStorageKey());
+      return [];
+    }
+    return parsed;
+  } catch {
+    return [];
+  }
+}
+
+function persistMessageHistory(): void {
+  try {
+    if (messageHistory.length === 0) {
+      sessionStorage.removeItem(historyStorageKey());
+      return;
+    }
+    sessionStorage.setItem(historyStorageKey(), JSON.stringify(messageHistory));
+  } catch {
+    // sessionStorage may be unavailable or full
+  }
+}
+
+async function restoreMessageHistory(elements: PanelElements): Promise<void> {
+  messageHistory = loadMessageHistoryFromStorage();
+  if (messageHistory.length === 0) {
+    return;
+  }
+
+  clearMessageLog(elements.log);
+  for (const entry of messageHistory) {
+    if (entry.kind === 'user') {
+      appendUserMessage(elements.log, entry.text);
+    } else {
+      await appendBotMessage(elements.log, entry.reply, elements.handlers, { reveal: false });
+    }
+  }
+}
+
+function resetConversation(elements: PanelElements): void {
+  messageHistory = [];
+  persistMessageHistory();
+  clearMessageLog(elements.log);
+  ensureWelcome(elements);
+}
+
+function closePanel(elements: PanelElements): void {
+  panelVisible = false;
+  panelMinimized = false;
+  setMinimized(elements.root, false);
+  setPanelHidden(elements.root, true);
+  syncLauncherExpanded(false);
+  focusLauncher();
 }
 
 function getPageContext(): ActionContext {
@@ -119,6 +244,8 @@ async function handleQuery(elements: PanelElements, query: string): Promise<void
   updateSendDisabled(elements.input, elements.send);
 
   appendUserMessage(elements.log, trimmed);
+  messageHistory.push({ kind: 'user', text: trimmed });
+  persistMessageHistory();
   elements.input.value = '';
   updateSendDisabled(elements.input, elements.send);
   setTypingVisible(elements.typing, true);
@@ -126,7 +253,9 @@ async function handleQuery(elements: PanelElements, query: string): Promise<void
   try {
     const engine = await loadEngine();
     const reply = await engine.ask(trimmed);
-    appendBotMessage(elements.log, reply, elements.handlers);
+    await appendBotMessage(elements.log, reply, elements.handlers);
+    messageHistory.push({ kind: 'bot', reply });
+    persistMessageHistory();
   } finally {
     setTypingVisible(elements.typing, false);
     busy = false;
@@ -292,27 +421,26 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
     if (busy) {
       return;
     }
-    clearMessageLog(log);
-    ensureWelcome(elements);
+    resetConversation(elements);
     focusInput(input);
   });
 
   closeBtn.addEventListener('click', () => {
-    panelVisible = false;
-    panelMinimized = false;
-    setMinimized(root, false);
-    setPanelHidden(root, true);
-    syncLauncherExpanded(false);
+    closePanel(elements);
   });
 
   root.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
-      closeBtn.click();
+      closePanel(elements);
     }
   });
 
-  ensureWelcome(elements);
+  void restoreMessageHistory(elements).then(() => {
+    if (elements.log.childElementCount === 0) {
+      ensureWelcome(elements);
+    }
+  });
 
   return elements;
 }
@@ -326,7 +454,9 @@ function showPanel(elements: PanelElements): void {
     setMinimized(elements.root, false);
     elements.minimizeBtn.setAttribute('aria-label', 'Minimize chat');
   }
-  ensureWelcome(elements);
+  if (elements.log.childElementCount === 0) {
+    ensureWelcome(elements);
+  }
   focusInput(elements.input);
 }
 
