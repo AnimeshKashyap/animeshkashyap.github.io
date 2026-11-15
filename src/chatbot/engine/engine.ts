@@ -23,7 +23,7 @@ export function createEngine(): ChatEngine {
         return intent;
       }
       const hits = retrievalSearch(query);
-      return composeReply(hits);
+      return composeReply(hits, query);
     },
   };
 }

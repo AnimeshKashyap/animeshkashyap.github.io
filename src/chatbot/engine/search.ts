@@ -230,9 +230,15 @@ function indexRecord(
   }
 
   for (const alias of record.aliases ?? []) {
-    const phrase = canonicalize(alias).join(' ');
+    const tokens = canonicalize(alias);
+    const phrase = tokens.join(' ');
     if (phrase.length > 0) {
       addTo(specific, phrase, record);
+    }
+    for (const token of tokens) {
+      if (isDistinctive(token)) {
+        addTo(specific, token, record);
+      }
     }
   }
 }
@@ -365,6 +371,58 @@ function fuzzyHits(index: BuiltIndex, tokens: readonly string[], limit: number):
   return hits;
 }
 
+function recordTokenSet(record: KnowledgeRecord): Set<string> {
+  const tokens = new Set<string>();
+  for (const token of canonicalize(record.title)) {
+    tokens.add(token);
+  }
+  for (const token of canonicalize(record.text)) {
+    tokens.add(token);
+  }
+  for (const tag of record.tags) {
+    for (const token of canonicalize(tag)) {
+      tokens.add(token);
+    }
+  }
+  for (const alias of record.aliases ?? []) {
+    for (const token of canonicalize(alias)) {
+      tokens.add(token);
+    }
+  }
+  return tokens;
+}
+
+function literalQueryTokenOverlap(
+  queryTokens: readonly string[],
+  record: KnowledgeRecord,
+): number {
+  const corpus = recordTokenSet(record);
+  let overlap = 0;
+  for (const token of queryTokens) {
+    if (token.length < 3) {
+      continue;
+    }
+    if (corpus.has(token)) {
+      overlap += 1;
+    }
+  }
+  return overlap;
+}
+
+function dropUngroundedFuzzyHits(hits: SearchHit[], queryTokens: readonly string[]): SearchHit[] {
+  if (hits.length <= 1 || hits.every((hit) => hit.score === 1)) {
+    return hits;
+  }
+  const minOverlap = queryTokens.length >= 3 ? 2 : 1;
+  const filtered = hits.filter((hit, index) => {
+    if (index === 0 || hit.score === 1) {
+      return true;
+    }
+    return literalQueryTokenOverlap(queryTokens, hit.record) >= minOverlap;
+  });
+  return filtered.length > 0 ? filtered : [hits[0]!];
+}
+
 function runSearch(index: BuiltIndex, tokens: readonly string[], limit: number): SearchHit[] {
   const exact = exactRecords(index, tokens);
   const hits =
@@ -378,7 +436,7 @@ function runSearch(index: BuiltIndex, tokens: readonly string[], limit: number):
       left.record.title.localeCompare(right.record.title) ||
       left.record.id.localeCompare(right.record.id),
   );
-  return hits.slice(0, limit);
+  return dropUngroundedFuzzyHits(hits, tokens).slice(0, limit);
 }
 
 /**

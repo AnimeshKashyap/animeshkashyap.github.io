@@ -1,6 +1,7 @@
 import { CHATBOT_CONFIG } from '../config';
 import type { ActionId, KnowledgeRecord, KnowledgeRecordType, Reply } from '../types';
 import type { SearchHit } from './search';
+import { canonicalize, normalize } from './synonyms';
 
 const MAX_HIGHLIGHTS = 3;
 const LOW_CONFIDENCE_TEXT = "I don't have that in the CV.";
@@ -280,7 +281,11 @@ function isContactRecord(record: KnowledgeRecord): boolean {
 }
 
 function actionsForRecords(records: readonly KnowledgeRecord[]): ActionId[] {
-  if (records.some((record) => record.type === 'unavailable' || isContactRecord(record))) {
+  const primary = records[0];
+  if (primary === undefined) {
+    return [];
+  }
+  if (primary.type === 'unavailable' || isContactRecord(primary)) {
     return ['email'];
   }
   return [];
@@ -333,20 +338,72 @@ function lowConfidenceReply(): Reply {
   };
 }
 
-function isConfident(hits: SearchHit[]): boolean {
+function recordTokenSet(record: KnowledgeRecord): Set<string> {
+  const tokens = new Set<string>();
+  for (const token of canonicalize(record.title)) {
+    tokens.add(token);
+  }
+  for (const token of canonicalize(record.text)) {
+    tokens.add(token);
+  }
+  for (const tag of record.tags) {
+    for (const token of canonicalize(tag)) {
+      tokens.add(token);
+    }
+  }
+  for (const alias of record.aliases ?? []) {
+    for (const token of canonicalize(alias)) {
+      tokens.add(token);
+    }
+  }
+  return tokens;
+}
+
+function literalQueryTokenOverlap(
+  queryTokens: readonly string[],
+  record: KnowledgeRecord,
+): number {
+  const corpus = recordTokenSet(record);
+  let overlap = 0;
+  for (const token of queryTokens) {
+    if (token.length < 3) {
+      continue;
+    }
+    if (corpus.has(token)) {
+      overlap += 1;
+    }
+  }
+  return overlap;
+}
+
+function isConfident(hits: SearchHit[], query: string): boolean {
   const top = hits[0];
   if (top === undefined) {
     return false;
   }
-  return top.score >= CHATBOT_CONFIG.retrievalThreshold;
+  if (top.score < CHATBOT_CONFIG.retrievalThreshold) {
+    return false;
+  }
+  if (top.score === 1) {
+    return true;
+  }
+  const queryTokens = normalize(query).filter((token) => token.length >= 3);
+  if (queryTokens.length <= 1) {
+    return true;
+  }
+  const overlap = literalQueryTokenOverlap(queryTokens, top.record);
+  if (overlap >= Math.min(2, queryTokens.length)) {
+    return true;
+  }
+  return overlap >= 1 && top.score >= 0.85;
 }
 
 /**
  * Build a retrieval reply from ranked search hits using record text only.
  * Single strong hit → per-type template; multiple hits → concise aggregate list.
  */
-export function composeReply(hits: SearchHit[]): Reply {
-  if (hits.length === 0 || !isConfident(hits)) {
+export function composeReply(hits: SearchHit[], query: string): Reply {
+  if (hits.length === 0 || !isConfident(hits, query)) {
     return lowConfidenceReply();
   }
 
