@@ -393,22 +393,26 @@ describe('chat panel', () => {
     expect(browser.getFocusedElement()).toBe(launcher);
   });
 
-  it('exposes CSS tooltips on header Reset and Close without title attributes', () => {
+  it('header has exactly Reset and Close with accessible names and CSS tooltips', () => {
     const { shadow } = mountHost();
     openPanel();
 
     const panel = getPanel(shadow);
-    const resetBtn = [...collectDescendants(panel)].find(
-      (node) => node.getAttribute('aria-label') === 'Reset chat',
-    );
-    const closeBtn = [...collectDescendants(panel)].find(
-      (node) => node.getAttribute('aria-label') === 'Close chat',
-    );
+    const actions = panel.querySelector('.chat-panel__actions');
+    const headerButtons = [...(actions?.querySelectorAll('button') ?? [])];
+    expect(headerButtons).toHaveLength(2);
+    expect(headerButtons.map((btn) => btn.getAttribute('aria-label'))).toEqual([
+      'Reset chat',
+      'Close chat',
+    ]);
 
-    expect(resetBtn?.getAttribute('data-tooltip')).toBe('Reset chat');
-    expect(closeBtn?.getAttribute('data-tooltip')).toBe('Close chat');
-    expect(resetBtn?.hasAttribute('title')).toBe(false);
-    expect(closeBtn?.hasAttribute('title')).toBe(false);
+    const resetBtn = headerButtons[0];
+    const closeBtn = headerButtons[1];
+
+    expect(resetBtn.getAttribute('data-tooltip')).toBe('Reset chat');
+    expect(closeBtn.getAttribute('data-tooltip')).toBe('Close chat');
+    expect(resetBtn.hasAttribute('title')).toBe(false);
+    expect(closeBtn.hasAttribute('title')).toBe(false);
   });
 
   it('renders five quick actions in the toolbar', () => {
