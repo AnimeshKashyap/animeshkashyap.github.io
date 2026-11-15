@@ -31,7 +31,11 @@ function collectDescendants(root: MockElement): MockElement[] {
   return nodes;
 }
 
-async function loadPanelApi(): Promise<{ openPanel: () => void }> {
+async function loadPanelApi(): Promise<{
+  openPanel: () => void;
+  togglePanel: () => void;
+  isPanelOpen: () => boolean;
+}> {
   return import('./panel');
 }
 
@@ -57,13 +61,15 @@ function getPanel(shadow: MockShadowRoot): MockElement {
 describe('chat panel', () => {
   let browser: BrowserGlobalsHandle;
   let openPanel: () => void;
+  let togglePanel: () => void;
+  let isPanelOpen: () => boolean;
 
   beforeEach(async () => {
     browser = installBrowserGlobals();
     vi.resetModules();
     engineBehavior.ask.mockReset();
     engineBehavior.ask.mockResolvedValue(makeReply({ text: 'Assistant response' }));
-    ({ openPanel } = await loadPanelApi());
+    ({ openPanel, togglePanel, isPanelOpen } = await loadPanelApi());
   });
 
   afterEach(() => {
@@ -324,6 +330,35 @@ describe('chat panel', () => {
     expect(panel.hasAttribute('hidden')).toBe(true);
     expect(launcher.getAttribute('aria-expanded')).toBe('false');
     expect(browser.getFocusedElement()).toBe(launcher);
+  });
+
+  it('launcher click while open closes like the header Close control and keeps history', async () => {
+    const { launcher, shadow } = mountHost();
+    openPanel();
+
+    const panel = getPanel(shadow);
+    const input = shadow.querySelector('.chat-panel__input') as MockElement;
+    input.value = 'Hello';
+    const form = shadow.querySelector('.chat-panel__form') as MockElement;
+    engineBehavior.ask.mockResolvedValueOnce(makeReply({ text: 'Hi there' }));
+    form.dispatchEvent('submit');
+    await vi.waitFor(() => expect(engineBehavior.ask).toHaveBeenCalled());
+
+    expect(browser.sessionData.get(HISTORY_KEY)).toBeTruthy();
+    expect(isPanelOpen()).toBe(true);
+
+    launcher.click();
+    await vi.waitFor(() => expect(isPanelOpen()).toBe(false));
+
+    expect(panel.hasAttribute('hidden')).toBe(true);
+    expect(launcher.getAttribute('aria-expanded')).toBe('false');
+    expect(browser.getFocusedElement()).toBe(launcher);
+    expect(browser.sessionData.get(HISTORY_KEY)).toBeTruthy();
+
+    togglePanel();
+    await vi.waitFor(() => expect(isPanelOpen()).toBe(true));
+    expect(panel.textContent).toContain('Hello');
+    expect(panel.textContent).toContain('Hi there');
   });
 
   it('closes via header control and minimizes without closing', () => {

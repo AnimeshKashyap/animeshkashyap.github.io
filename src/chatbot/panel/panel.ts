@@ -489,3 +489,33 @@ export function openPanel(): void {
     focusInput(panelElements.input);
   }
 }
+
+/** Whether the chat panel is currently open (including minimized). */
+export function isPanelOpen(): boolean {
+  return panelVisible;
+}
+
+/** Opens the panel when closed; closes via the same path as the header Close control when open. */
+export function togglePanel(): void {
+  const shadow = getChatbotShadow();
+  if (shadow === null) {
+    return;
+  }
+
+  if (!panelMounted) {
+    panelElements = mountPanel(shadow);
+    panelMounted = true;
+    void loadEngine();
+  }
+
+  if (panelElements === undefined) {
+    return;
+  }
+
+  if (panelVisible) {
+    closePanel(panelElements);
+    return;
+  }
+
+  showPanel(panelElements);
+}

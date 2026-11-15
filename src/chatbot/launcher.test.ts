@@ -12,7 +12,7 @@ const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
 const LAUNCHER_BUBBLE_AUTO_HIDE_MS = 8000;
 
 vi.mock('./panel/panel', () => ({
-  openPanel: vi.fn(),
+  togglePanel: vi.fn(),
 }));
 
 function mountLauncherOnPage(page: 'main' | 'v4'): {

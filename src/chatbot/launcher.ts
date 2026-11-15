@@ -318,8 +318,8 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
     } else if (!launcherBubbleSeen()) {
       markLauncherBubbleSeen();
     }
-    void import('./panel/panel').then(({ openPanel }) => {
-      openPanel();
+    void import('./panel/panel').then(({ togglePanel }) => {
+      togglePanel();
     });
   });
 
