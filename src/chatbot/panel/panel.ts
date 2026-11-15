@@ -30,13 +30,11 @@ type PanelElements = {
   form: HTMLFormElement;
   input: HTMLInputElement;
   send: HTMLButtonElement;
-  minimizeBtn: HTMLButtonElement;
   handlers: MessageHandlers;
 };
 
 let panelMounted = false;
 let panelVisible = false;
-let panelMinimized = false;
 let panelElements: PanelElements | undefined;
 let enginePromise: Promise<ChatEngine> | undefined;
 let busy = false;
@@ -175,8 +173,6 @@ function resetConversation(elements: PanelElements): void {
 
 function closePanel(elements: PanelElements): void {
   panelVisible = false;
-  panelMinimized = false;
-  setMinimized(elements.root, false);
   setPanelHidden(elements.root, true);
   syncLauncherExpanded(false);
   focusLauncher();
@@ -215,10 +211,6 @@ function setPanelHidden(root: HTMLElement, hidden: boolean): void {
   } else {
     root.removeAttribute('hidden');
   }
-}
-
-function setMinimized(root: HTMLElement, minimized: boolean): void {
-  root.classList.toggle('chat-panel--minimized', minimized);
 }
 
 function focusInput(input: HTMLInputElement): void {
@@ -317,16 +309,13 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   const actions = document.createElement('div');
   actions.className = 'chat-panel__actions';
 
-  const minimizeBtn = createIconButton('chat-panel__icon-btn', 'Minimize chat');
-  minimizeBtn.textContent = '−';
-
   const clearBtn = createIconButton('chat-panel__icon-btn', 'Clear conversation');
   clearBtn.textContent = '⌫';
 
   const closeBtn = createIconButton('chat-panel__icon-btn', 'Close chat');
   closeBtn.textContent = '×';
 
-  actions.append(minimizeBtn, clearBtn, closeBtn);
+  actions.append(clearBtn, closeBtn);
   header.append(title, actions);
 
   const body = document.createElement('div');
@@ -379,7 +368,6 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
     form,
     input,
     send,
-    minimizeBtn,
     handlers: {
       onSuggestion: () => {},
       onAction: () => {},
@@ -406,16 +394,6 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
 
   input.addEventListener('input', () => {
     updateSendDisabled(input, send);
-  });
-
-  minimizeBtn.addEventListener('click', () => {
-    panelMinimized = !panelMinimized;
-    setMinimized(root, panelMinimized);
-    const ariaLabel = panelMinimized ? 'Restore chat' : 'Minimize chat';
-    minimizeBtn.setAttribute('aria-label', ariaLabel);
-    if (!panelMinimized) {
-      focusInput(input);
-    }
   });
 
   clearBtn.addEventListener('click', () => {
@@ -450,11 +428,6 @@ function showPanel(elements: PanelElements): void {
   panelVisible = true;
   setPanelHidden(elements.root, false);
   syncLauncherExpanded(true);
-  if (panelMinimized) {
-    panelMinimized = false;
-    setMinimized(elements.root, false);
-    elements.minimizeBtn.setAttribute('aria-label', 'Minimize chat');
-  }
   if (elements.log.childElementCount === 0) {
     ensureWelcome(elements);
   }
@@ -480,18 +453,10 @@ export function openPanel(): void {
 
   if (!panelVisible) {
     showPanel(panelElements);
-    return;
-  }
-
-  if (panelMinimized) {
-    panelMinimized = false;
-    setMinimized(panelElements.root, false);
-    panelElements.minimizeBtn.setAttribute('aria-label', 'Minimize chat');
-    focusInput(panelElements.input);
   }
 }
 
-/** Whether the chat panel is currently open (including minimized). */
+/** Whether the chat panel is currently open. */
 export function isPanelOpen(): boolean {
   return panelVisible;
 }

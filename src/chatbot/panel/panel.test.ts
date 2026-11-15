@@ -377,20 +377,11 @@ describe('chat panel', () => {
     expect(panel.textContent).toContain('Hi there');
   });
 
-  it('closes via header control and minimizes without closing', () => {
+  it('closes via header control', () => {
     const { launcher, shadow } = mountHost();
     openPanel();
 
     const panel = getPanel(shadow);
-    const minimizeBtn = [...collectDescendants(panel)].find(
-      (node) => node.getAttribute('aria-label') === 'Minimize chat',
-    );
-    minimizeBtn?.click();
-    expect(panel.classList.contains('chat-panel--minimized')).toBe(true);
-    expect(panel.hasAttribute('hidden')).toBe(false);
-    expect(launcher.getAttribute('aria-label')).toBe('Close chat');
-    expect(launcher.getAttribute('aria-expanded')).toBe('true');
-
     const closeBtn = [...collectDescendants(panel)].find(
       (node) => node.getAttribute('aria-label') === 'Close chat',
     );

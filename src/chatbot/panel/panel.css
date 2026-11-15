@@ -92,10 +92,6 @@
   transform: translateY(12px);
 }
 
-.chat-panel--minimized .chat-panel__body {
-  display: none;
-}
-
 .chat-panel__header {
   display: flex;
   align-items: center;
