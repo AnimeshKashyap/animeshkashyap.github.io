@@ -56,6 +56,22 @@ function recordCorpus(record: KnowledgeRecord): string {
   return `${record.title}\n${record.text}`;
 }
 
+function experienceRecordsNewestFirst(): KnowledgeRecord[] {
+  return getRecords().filter((record) => record.type === 'experience');
+}
+
+function companyFromExperienceBullet(line: string): string | undefined {
+  const match = /^•\s+.+ @ (.+?) \(/u.exec(line);
+  return match?.[1];
+}
+
+function companiesFromExperienceAggregate(text: string): string[] {
+  return text
+    .split('\n')
+    .map((line) => companyFromExperienceBullet(line))
+    .filter((company): company is string => company !== undefined);
+}
+
 function assertReplyLexicon(replyText: string, sourceRecords: KnowledgeRecord[]): void {
   const corpus = sourceRecords.map(recordCorpus).join('\n');
   const lowerReply = replyText.toLowerCase();
@@ -324,5 +340,24 @@ describe('golden visitor questions', () => {
     for (const suggestion of reply.suggestions) {
       expect(CHATBOT_CONFIG.suggestedQuestions).toContain(suggestion);
     }
+  });
+
+  it('Summarize his work experience lists roles newest-first with text order matching sources', async () => {
+    const query = 'Summarize his work experience.';
+    const reply = await engine.ask(query);
+    expect(reply.confident).toBe(true);
+    expect(reply.sources.length).toBeGreaterThan(1);
+
+    const chronology = experienceRecordsNewestFirst();
+    const retrievedIds = new Set(reply.sources.map((chip) => chip.id));
+    const expectedSourceLabels = chronology
+      .filter((record) => retrievedIds.has(record.id))
+      .map((record) => record.source);
+    const sourceLabels = reply.sources.map((chip) => chip.label);
+
+    expect(sourceLabels).toEqual(expectedSourceLabels);
+    expect(companiesFromExperienceAggregate(reply.text)).toEqual(
+      expectedSourceLabels.map((label) => label.replace(/^Experience: /u, '')),
+    );
   });
 });
