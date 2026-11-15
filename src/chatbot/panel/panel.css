@@ -1,3 +1,16 @@
+/*
+ * z-index 30 (launcher + panel + greeting bubble, same shadow stack):
+ * Audited fixed/sticky layers in src/components and src/v4:
+ * - NetworkBackground: fixed, z-index 0
+ * - Hero sections: z-index 1 (in-flow, not fixed)
+ * - NavBar .header: sticky top, z-index 50; mobile .nav: fixed below header (inherits header stacking)
+ * - v4 sceneSelector / sceneCustomizer / customizer panel + crosshair: fixed, z-index 20–25
+ * - v4 jsonModal overlay: fixed, z-index 40
+ * Chosen 30: above v4 customizer side panels (20–25), below jsonModal (40) and NavBar (50).
+ * At 360px / 768px / 1280px the chatbot anchors bottom-left with safe-area insets; the open
+ * mobile nav and sticky header occupy the top band only, so no overlap with launcher or panel.
+ */
+
 :host([data-chatbot-page='v4']) {
   color-scheme: dark;
   --bg: #0b1026;
@@ -42,10 +55,25 @@
   color: var(--text-primary, #eef1f8);
   background: var(--bg-raised, #0b0f1a);
   box-shadow: var(--shadow-card, 0 20px 60px rgba(0, 0, 0, 0.35));
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 240ms ease,
+    transform 240ms ease,
+    display 240ms allow-discrete;
+}
+
+@starting-style {
+  .chat-panel:not([hidden]) {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
 
 .chat-panel[hidden] {
   display: none;
+  opacity: 0;
+  transform: translateY(12px);
 }
 
 .chat-panel--minimized .chat-panel__body {
@@ -411,6 +439,22 @@
   opacity: 0.45;
 }
 
+@media (max-width: 479px) {
+  @starting-style {
+    .chat-panel:not([hidden]) {
+      transform: translateY(100%);
+    }
+  }
+
+  .chat-panel[hidden] {
+    transform: translateY(100%);
+  }
+
+  .chat-panel:not([hidden]) {
+    transform: translateY(0);
+  }
+}
+
 @media (min-width: 480px) {
   .chat-panel {
     left: max(16px, env(safe-area-inset-left, 0px));
@@ -441,6 +485,26 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .chat-panel {
+    transition: none;
+  }
+
+  @starting-style {
+    .chat-panel:not([hidden]) {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .chat-panel[hidden] {
+    opacity: 0;
+    transform: none;
+  }
+
+  .chat-panel:not([hidden]) {
+    transform: none;
+  }
+
   .chat-panel__icon-btn,
   .chat-panel__send,
   .chat-chip {
