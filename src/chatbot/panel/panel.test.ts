@@ -530,12 +530,11 @@ describe('chat panel', () => {
     expect(panelCss).toMatch(/\.chat-panel__icon-btn svg\s*\{/);
   });
 
-  it('renders five quick actions in the toolbar', () => {
+  it('does not render a quick-action toolbar in the panel', () => {
     const { shadow } = mountHost();
     openPanel();
 
-    const quick = shadow.querySelector('.chat-panel__quick-actions');
-    expect(quick?.getAttribute('role')).toBe('toolbar');
-    expect(quick?.querySelectorAll('.chat-chip--quick')).toHaveLength(5);
+    expect(shadow.querySelector('.chat-panel__quick-actions')).toBeNull();
+    expect(shadow.querySelector('.chat-chip--quick')).toBeNull();
   });
 });

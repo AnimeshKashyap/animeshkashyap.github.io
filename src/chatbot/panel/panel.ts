@@ -1,7 +1,5 @@
 import panelCss from './panel.css?inline';
-import { CHATBOT_CONFIG } from '../config';
 import { runAction, type ActionContext } from '../engine/actions';
-import type { ActionId } from '../types';
 import {
   appendBotMessage,
   appendUserMessage,
@@ -16,7 +14,6 @@ import type { ChatEngine, Reply } from '../types';
 const CHATBOT_HOST_ID = 'portfolio-chatbot-host';
 export const CHAT_PANEL_ID = 'portfolio-chat-panel';
 
-const QUICK_ACTION_IDS: ActionId[] = ['cv', 'email', 'linkedin', 'github', 'projects'];
 const CHAT_HISTORY_STORAGE_PREFIX = 'portfolio-chatbot-history';
 
 type HistoryEntry =
@@ -295,33 +292,11 @@ async function handleSend(elements: PanelElements): Promise<void> {
   await handleQuery(elements, elements.input.value);
 }
 
-function mountQuickActionBar(page: ActionContext): HTMLElement {
-  const bar = document.createElement('div');
-  bar.className = 'chat-panel__quick-actions';
-  bar.setAttribute('role', 'toolbar');
-  bar.setAttribute('aria-label', 'Quick actions');
-
-  for (const id of QUICK_ACTION_IDS) {
-    const config = CHATBOT_CONFIG.actions[id];
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'chat-chip chat-chip--quick';
-    button.textContent = config.label;
-    button.addEventListener('click', () => {
-      runAction(id, page);
-    });
-    bar.appendChild(button);
-  }
-
-  return bar;
-}
-
 function mountPanel(shadow: ShadowRoot): PanelElements {
   const style = document.createElement('style');
   style.textContent = panelCss;
   shadow.appendChild(style);
 
-  const page = getPageContext();
 
   const root = document.createElement('div');
   root.id = CHAT_PANEL_ID;
@@ -371,7 +346,6 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   }
   typing.append(typingLabel, dots);
 
-  const quickActions = mountQuickActionBar(page);
 
   const form = document.createElement('form');
   form.className = 'chat-panel__form';
@@ -416,7 +390,7 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
     },
   };
 
-  body.append(log, typing, quickActions, form);
+  body.append(log, typing, form);
   root.append(header, body);
   shadow.appendChild(root);
 

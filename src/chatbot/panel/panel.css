@@ -368,21 +368,6 @@
   border-color: var(--accent-cyan, #5eead4);
 }
 
-.chat-panel__quick-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  flex-shrink: 0;
-  padding: 8px 12px 0;
-  background: var(--bg-raised, #0b0f1a);
-  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-}
-
-.chat-chip--quick {
-  font-size: 11px;
-  padding: 5px 9px;
-  color: var(--text-secondary, #9aa3b8);
-}
 
 .chat-msg__sources {
   display: flex;
