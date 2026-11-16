@@ -421,6 +421,8 @@ describe('chat panel', () => {
     expect(closeBtn.getAttribute('data-tooltip')).toBe('Close chat');
     expect(resetBtn.hasAttribute('title')).toBe(false);
     expect(closeBtn.hasAttribute('title')).toBe(false);
+    expect(resetBtn.querySelector('svg')).not.toBeNull();
+    expect(closeBtn.textContent).toBe('×');
   });
 
   it('panel CSS keeps header tooltips unclipped with edge-aware Close placement', () => {
