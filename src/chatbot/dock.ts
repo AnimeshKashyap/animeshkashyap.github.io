@@ -11,10 +11,11 @@ const actions: { id: ActionId; label: string; path: string }[] = [
 export const dockStyles = `
 .quick-dock {
   position: fixed; z-index: 31;
-  left: calc(max(16px, env(safe-area-inset-left, 0px)) + 8px);
+  left: calc(max(16px, env(safe-area-inset-left, 0px)) + 16px);
   bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 66px);
   width: 40px; height: 40px;
-  transition: left 240ms ease, bottom 240ms ease;
+  transform: translate(var(--dock-x, 0px), var(--dock-y, 0px));
+  transition: transform 240ms ease;
 }
 .quick-dock__button { position: absolute; left: 0; bottom: 0; transform: translateY(calc(var(--index) * -46px)); transition: transform 240ms ease; }
 .quick-dock__button:nth-child(1) { --index: 0; }
@@ -23,19 +24,19 @@ export const dockStyles = `
 .quick-dock__button:nth-child(4) { --index: 3; }
 .quick-dock__button:nth-child(5) { --index: 4; }
 .launcher[aria-expanded="true"] ~ .quick-dock {
-  left: calc(100vw - env(safe-area-inset-right, 0px) - 224px);
-  bottom: calc(100dvh - max(16px, env(safe-area-inset-top, 0px)) - 40px);
+  --dock-x: calc(100vw - env(safe-area-inset-right, 0px) - 224px - max(16px, env(safe-area-inset-left, 0px)) - 16px);
+  --dock-y: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 66px - 100dvh + max(16px, env(safe-area-inset-top, 0px)) + 40px);
 }
 .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button { transform: translateX(calc(var(--index) * 46px)); }
 @media (min-width: 480px) {
   .launcher[aria-expanded="true"] ~ .quick-dock {
-    left: calc(max(16px, env(safe-area-inset-left, 0px)) + min(380px, 100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) - 224px);
-    bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 56px + 12px + min(560px, 100dvh - max(16px, env(safe-area-inset-bottom, 0px)) - 56px - 12px - max(16px, env(safe-area-inset-top, 0px)) - 60px) + 10px);
+    --dock-x: calc(min(380px, 100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) - 240px);
+    --dock-y: calc(-12px - min(560px, 100dvh - max(16px, env(safe-area-inset-bottom, 0px)) - 56px - 12px - max(16px, env(safe-area-inset-top, 0px)) - 60px));
   }
 }
 /* Keep the open row and its edge tooltips within narrow viewports. */
 @media (max-width: 479px) {
-  .launcher[aria-expanded="true"] ~ .quick-dock { left: max(0px, calc(100vw - env(safe-area-inset-right, 0px) - 224px)); }
+  .launcher[aria-expanded="true"] ~ .quick-dock { --dock-x: calc(max(0px, 100vw - env(safe-area-inset-right, 0px) - 224px) - max(16px, env(safe-area-inset-left, 0px)) - 16px); }
   .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button:first-child::after { left: 0; transform: none; }
   .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button:last-child::after { left: auto; right: 0; transform: none; }
 }
@@ -56,14 +57,15 @@ export const dockStyles = `
 .quick-dock__button:focus-visible { outline: 2px solid var(--accent-cyan, #5eead4); outline-offset: 3px; }
 .quick-dock__button svg { width: 20px; height: 20px; }
 .quick-dock__button::after {
-  content: attr(data-tooltip); position: absolute; left: calc(100% + 8px); top: 50%;
-  transform: translateY(-50%); white-space: nowrap; pointer-events: none; opacity: 0;
+  content: attr(data-tooltip); position: absolute; right: calc(100% + 8px); top: 50%;
+  /* Shift only the overflow back into view when the launcher is near the left edge. */
+  transform: translate(max(0px, calc(100% - max(16px, env(safe-area-inset-left, 0px)) - 8px)), -50%); white-space: nowrap; pointer-events: none; opacity: 0;
   padding: 5px 8px; border-radius: 6px; font: 12px var(--font-body, system-ui, sans-serif);
   color: var(--text-primary, #eef1f8); background: var(--bg-raised, #0b0f1a);
   border: 1px solid var(--border, rgba(255,255,255,.12));
 }
 .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button::after {
-  left: 50%; top: auto; bottom: calc(100% + 8px); transform: translateX(-50%);
+  left: 50%; right: auto; top: auto; bottom: calc(100% + 8px); transform: translateX(-50%);
 }
 /* On short desktop viewports, put tooltips below instead of beyond the top edge. */
 @media (min-width: 480px) and (max-height: 750px) {

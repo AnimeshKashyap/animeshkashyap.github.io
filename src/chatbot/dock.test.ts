@@ -29,12 +29,29 @@ describe('quick action dock', () => {
     expect(runAction).toHaveBeenCalledTimes(5);
   });
 
-  it('supports right and above tooltips for the two orientations', () => {
-    expect(dockStyles).toContain('left: calc(100% + 8px)');
-    expect(dockStyles).toContain('.launcher[aria-expanded="true"] ~ .quick-dock');
-    expect(dockStyles).toContain('bottom: calc(100% + 8px)');
+  it('anchors closed tooltips left and clamps their overflow into the viewport', () => {
+    expect(dockStyles).toMatch(/\.quick-dock__button::after\s*\{[^}]*right: calc\(100% \+ 8px\)/s);
+    expect(dockStyles).toContain('translate(max(0px, calc(100% - max(16px, env(safe-area-inset-left, 0px)) - 8px)), -50%)');
+    // At the default 16px inset, a wider label must shift to x=0, not clip.
+    for (const width of [20, 80, 150]) {
+      const anchor = 16 + 16 - 8;
+      expect(anchor - width + Math.max(0, width - 24)).toBeGreaterThanOrEqual(0);
+    }
+    expect(dockStyles).toContain('left: 50%; right: auto; top: auto; bottom: calc(100% + 8px)');
     expect(dockStyles).toContain(':focus-visible::after');
-    expect(dockStyles).toContain('transition: left 240ms ease, bottom 240ms ease');
+  });
+
+  it('right-aligns the closed buttons with the 56px launcher', () => {
+    expect(dockStyles).toContain('left: calc(max(16px, env(safe-area-inset-left, 0px)) + 16px)');
+    expect(dockStyles).toContain('width: 40px; height: 40px');
+    expect(16 + 40).toBe(56);
+  });
+
+  it('moves the dock and buttons with transforms and honors reduced motion', () => {
+    expect(dockStyles).toContain('.launcher[aria-expanded="true"] ~ .quick-dock');
+    expect(dockStyles).toContain('transform: translate(var(--dock-x, 0px), var(--dock-y, 0px))');
+    expect(dockStyles).toContain('transition: transform 240ms ease');
+    expect(dockStyles).not.toMatch(/transition:\s*[^;]*(?:left|bottom)/);
     expect(dockStyles).toContain('translateY(calc(var(--index) * -46px))');
     expect(dockStyles).toContain('translateX(calc(var(--index) * 46px))');
     expect(dockStyles).toContain('@media (prefers-reduced-motion: reduce)');
