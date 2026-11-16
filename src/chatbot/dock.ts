@@ -57,15 +57,19 @@ export const dockStyles = `
 .quick-dock__button:focus-visible { outline: 2px solid var(--accent-cyan, #5eead4); outline-offset: 3px; }
 .quick-dock__button svg { width: 20px; height: 20px; }
 .quick-dock__button::after {
-  content: attr(data-tooltip); position: absolute; right: calc(100% + 8px); top: 50%;
-  /* Shift only the overflow back into view when the launcher is near the left edge. */
-  transform: translate(max(0px, calc(100% - max(16px, env(safe-area-inset-left, 0px)) - 8px)), -50%); white-space: nowrap; pointer-events: none; opacity: 0;
+  /* The left safe area leaves at most 24px for a label: use the right side instead. */
+  content: attr(data-tooltip); position: absolute; left: calc(100% + 8px); right: auto; top: 50%;
+  transform: translateY(-50%); pointer-events: none; opacity: 0;
+  box-sizing: border-box; width: max-content;
+  max-width: max(0px, calc(100vw - max(16px, env(safe-area-inset-left, 0px)) - 64px - env(safe-area-inset-right, 0px)));
+  overflow-wrap: anywhere;
   padding: 5px 8px; border-radius: 6px; font: 12px var(--font-body, system-ui, sans-serif);
   color: var(--text-primary, #eef1f8); background: var(--bg-raised, #0b0f1a);
   border: 1px solid var(--border, rgba(255,255,255,.12));
 }
 .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button::after {
   left: 50%; right: auto; top: auto; bottom: calc(100% + 8px); transform: translateX(-50%);
+  max-width: calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
 }
 /* On short desktop viewports, put tooltips below instead of beyond the top edge. */
 @media (min-width: 480px) and (max-height: 750px) {

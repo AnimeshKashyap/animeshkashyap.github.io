@@ -29,13 +29,23 @@ describe('quick action dock', () => {
     expect(runAction).toHaveBeenCalledTimes(5);
   });
 
-  it('anchors closed tooltips left and clamps their overflow into the viewport', () => {
-    expect(dockStyles).toMatch(/\.quick-dock__button::after\s*\{[^}]*right: calc\(100% \+ 8px\)/s);
-    expect(dockStyles).toContain('translate(max(0px, calc(100% - max(16px, env(safe-area-inset-left, 0px)) - 8px)), -50%)');
-    // At the default 16px inset, a wider label must shift to x=0, not clip.
-    for (const width of [20, 80, 150]) {
-      const anchor = 16 + 16 - 8;
-      expect(anchor - width + Math.max(0, width - 24)).toBeGreaterThanOrEqual(0);
+  it('places closed labels on the right without crossing the icon or safe edges', () => {
+    expect(dockStyles).toContain('left: calc(100% + 8px); right: auto; top: 50%');
+    expect(dockStyles).toContain('transform: translateY(-50%)');
+    expect(dockStyles).toContain('box-sizing: border-box; width: max-content');
+    expect(dockStyles).toContain('max-width: max(0px, calc(100vw - max(16px, env(safe-area-inset-left, 0px)) - 64px - env(safe-area-inset-right, 0px)))');
+    expect(dockStyles).toContain('overflow-wrap: anywhere');
+    // Model the CSS border boxes: the closed icon is offset 16px from the launcher.
+    for (const [viewport, safeLeft, safeRight, labelWidth] of [
+      [320, 0, 0, 150], [320, 40, 24, 500], [768, 100, 32, 1000], [240, 16, 20, 80],
+    ]) {
+      const iconLeft = Math.max(16, safeLeft!) + 16;
+      const iconRight = iconLeft + 40;
+      const labelLeft = iconRight + 8;
+      const labelRight = labelLeft + Math.min(labelWidth!, Math.max(0, viewport! - Math.max(16, safeLeft!) - 64 - safeRight!));
+      expect(iconLeft - 8 - safeLeft!).toBeLessThanOrEqual(24); // too little room for normal labels
+      expect(labelLeft).toBeGreaterThan(iconRight);
+      expect(labelRight).toBeLessThanOrEqual(viewport! - safeRight!);
     }
     expect(dockStyles).toContain('left: 50%; right: auto; top: auto; bottom: calc(100% + 8px)');
     expect(dockStyles).toContain(':focus-visible::after');
