@@ -9,10 +9,35 @@ const actions: { id: ActionId; label: string; path: string }[] = [
 ];
 
 export const dockStyles = `
-.quick-dock { display: flex; flex-direction: column; gap: 6px; }
-.quick-dock[data-orientation="horizontal"] { flex-direction: row; }
+.quick-dock {
+  position: fixed; z-index: 31;
+  left: calc(max(16px, env(safe-area-inset-left, 0px)) + 8px);
+  bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 66px);
+  width: 40px; height: 40px;
+  transition: left 240ms ease, bottom 240ms ease;
+}
+.quick-dock__button { position: absolute; left: 0; bottom: 0; transform: translateY(calc(var(--index) * -46px)); transition: transform 240ms ease; }
+.quick-dock__button:nth-child(1) { --index: 0; }
+.quick-dock__button:nth-child(2) { --index: 1; }
+.quick-dock__button:nth-child(3) { --index: 2; }
+.quick-dock__button:nth-child(4) { --index: 3; }
+.quick-dock__button:nth-child(5) { --index: 4; }
+.launcher[aria-expanded="true"] ~ .quick-dock {
+  left: calc(100vw - env(safe-area-inset-right, 0px) - 224px);
+  bottom: calc(100dvh - max(16px, env(safe-area-inset-top, 0px)) - 40px);
+}
+.launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button { transform: translateX(calc(var(--index) * 46px)); }
+@media (min-width: 480px) {
+  .launcher[aria-expanded="true"] ~ .quick-dock {
+    left: calc(max(16px, env(safe-area-inset-left, 0px)) + min(380px, 100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) - 224px);
+    bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 56px + 12px + min(560px, 100dvh - max(16px, env(safe-area-inset-bottom, 0px)) - 56px - 12px - max(16px, env(safe-area-inset-top, 0px)) - 60px) + 10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-dock, .quick-dock__button { transition: none; }
+}
 .quick-dock__button {
-  position: relative; display: grid; place-items: center; box-sizing: border-box;
+  display: grid; place-items: center; box-sizing: border-box;
   width: 40px; height: 40px; padding: 0; border-radius: 50%; cursor: pointer;
   border: 1px solid var(--border, rgba(255,255,255,.12));
   color: var(--text-primary, #eef1f8); background: var(--bg-raised, #0b0f1a);
@@ -22,14 +47,14 @@ export const dockStyles = `
 .quick-dock__button:focus-visible { outline: 2px solid var(--accent-cyan, #5eead4); outline-offset: 3px; }
 .quick-dock__button svg { width: 20px; height: 20px; }
 .quick-dock__button::after {
-  content: attr(data-tooltip); position: absolute; right: calc(100% + 8px); top: 50%;
+  content: attr(data-tooltip); position: absolute; left: calc(100% + 8px); top: 50%;
   transform: translateY(-50%); white-space: nowrap; pointer-events: none; opacity: 0;
   padding: 5px 8px; border-radius: 6px; font: 12px var(--font-body, system-ui, sans-serif);
   color: var(--text-primary, #eef1f8); background: var(--bg-raised, #0b0f1a);
   border: 1px solid var(--border, rgba(255,255,255,.12));
 }
-.quick-dock[data-orientation="horizontal"] .quick-dock__button::after {
-  right: auto; left: 50%; top: auto; bottom: calc(100% + 8px); transform: translateX(-50%);
+.launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button::after {
+  left: 50%; top: auto; bottom: calc(100% + 8px); transform: translateX(-50%);
 }
 .quick-dock__button:hover::after, .quick-dock__button:focus-visible::after { opacity: 1; }
 `;
@@ -39,7 +64,6 @@ export function createDock(page: 'main' | 'v4'): HTMLElement {
   dock.className = 'quick-dock';
   dock.setAttribute('role', 'group');
   dock.setAttribute('aria-label', 'Quick actions');
-  dock.setAttribute('data-orientation', 'vertical');
 
   for (const { id, label, path } of actions) {
     const button = document.createElement('button');

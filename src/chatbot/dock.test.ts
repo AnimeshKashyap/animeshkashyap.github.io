@@ -28,10 +28,15 @@ describe('quick action dock', () => {
     expect(runAction).toHaveBeenCalledTimes(5);
   });
 
-  it('supports left and above tooltips for the two orientations', () => {
-    expect(dockStyles).toContain('right: calc(100% + 8px)');
-    expect(dockStyles).toContain('data-orientation="horizontal"');
+  it('supports right and above tooltips for the two orientations', () => {
+    expect(dockStyles).toContain('left: calc(100% + 8px)');
+    expect(dockStyles).toContain('.launcher[aria-expanded="true"] ~ .quick-dock');
     expect(dockStyles).toContain('bottom: calc(100% + 8px)');
     expect(dockStyles).toContain(':focus-visible::after');
+    expect(dockStyles).toContain('transition: left 240ms ease, bottom 240ms ease');
+    expect(dockStyles).toContain('translateY(calc(var(--index) * -46px))');
+    expect(dockStyles).toContain('translateX(calc(var(--index) * 46px))');
+    expect(dockStyles).toContain('@media (prefers-reduced-motion: reduce)');
+    expect(dockStyles).toContain('.quick-dock, .quick-dock__button { transition: none; }');
   });
 });
