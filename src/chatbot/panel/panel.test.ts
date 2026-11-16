@@ -1,3 +1,7 @@
+/// <reference types="node" />
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Reply } from '../types';
 import { mountLauncher } from '../launcher';
@@ -10,6 +14,10 @@ import {
   type MockShadowRoot,
 } from './fixtures/browser-globals';
 import { makeReply } from './fixtures/replies';
+const panelCss = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), 'panel.css'),
+  'utf8',
+);
 
 const HISTORY_KEY = 'portfolio-chatbot-history:main';
 const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
@@ -413,6 +421,26 @@ describe('chat panel', () => {
     expect(closeBtn.getAttribute('data-tooltip')).toBe('Close chat');
     expect(resetBtn.hasAttribute('title')).toBe(false);
     expect(closeBtn.hasAttribute('title')).toBe(false);
+  });
+
+  it('panel CSS keeps header tooltips unclipped with edge-aware Close placement', () => {
+    const panelRule = panelCss.match(/\.chat-panel\s*\{[^}]+\}/s)?.[0] ?? '';
+    expect(panelRule).not.toMatch(/\boverflow:\s*hidden\b/);
+
+    expect(panelCss).toMatch(/\.chat-panel__body\s*\{[^}]*overflow:\s*hidden/s);
+    expect(panelCss).toMatch(/\.chat-panel__header\s*\{[^}]*overflow:\s*visible/s);
+
+    expect(panelCss).toMatch(
+      /\.chat-panel__icon-btn\[data-tooltip\]:focus-visible::after/s,
+    );
+    expect(panelCss).toMatch(/visibility\s+0s\s+linear\s+400ms/);
+
+    expect(panelCss).toMatch(
+      /\.chat-panel__actions\s*>\s*\.chat-panel__icon-btn:last-child\[data-tooltip\]::after[^}]*right:\s*0/s,
+    );
+    expect(panelCss).toMatch(/var\(--bg-raised/);
+    expect(panelCss).toMatch(/var\(--text-primary/);
+    expect(panelCss).toMatch(/prefers-reduced-motion:\s*reduce[\s\S]*\[data-tooltip\]/s);
   });
 
   it('renders five quick actions in the toolbar', () => {
