@@ -1,3 +1,7 @@
+/// <reference types="node" />
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Reply } from '../types';
 import { mountLauncher } from '../launcher';
@@ -10,6 +14,10 @@ import {
   type MockShadowRoot,
 } from './fixtures/browser-globals';
 import { makeReply } from './fixtures/replies';
+const panelDir = dirname(fileURLToPath(import.meta.url));
+const panelCss = readFileSync(join(panelDir, 'panel.css'), 'utf8');
+const panelSource = readFileSync(join(panelDir, 'panel.ts'), 'utf8');
+const chatbotReadme = readFileSync(join(panelDir, '../README.md'), 'utf8');
 
 const HISTORY_KEY = 'portfolio-chatbot-history:main';
 const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
@@ -56,6 +64,14 @@ function getPanel(shadow: MockShadowRoot): MockElement {
     throw new Error('panel not mounted');
   }
   return panel;
+}
+
+function getResetHeaderButton(panel: MockElement): MockElement {
+  const resetBtn = panel.querySelector('.chat-panel__actions button');
+  if (resetBtn === null) {
+    throw new Error('reset header button not found');
+  }
+  return resetBtn;
 }
 
 describe('chat panel', () => {
@@ -266,6 +282,38 @@ describe('chat panel', () => {
       .toHaveLength(5);
   });
 
+  it('reset after in-session messages clears storage and restores welcome', async () => {
+    const { shadow } = mountHost();
+    openPanel();
+
+    const input = shadow.querySelector('.chat-panel__input') as MockElement;
+    const form = shadow.querySelector('.chat-panel__form') as MockElement;
+    input.value = 'Live thread';
+    input.dispatchEvent('input');
+    form.dispatchEvent('submit');
+
+    await vi.waitFor(() => {
+      expect(engineBehavior.ask).toHaveBeenCalledWith('Live thread');
+    });
+    await vi.waitFor(() =>
+      expect(getPanel(shadow).textContent).toContain('Assistant response'),
+    );
+    await vi.waitFor(() =>
+      expect((shadow.querySelector('.chat-panel__typing') as MockElement).hidden).toBe(true),
+    );
+    expect(browser.sessionData.get(HISTORY_KEY)).toContain('Live thread');
+
+    getResetHeaderButton(getPanel(shadow)).click();
+
+    expect(browser.sessionData.has(HISTORY_KEY)).toBe(false);
+    expect(getPanel(shadow).textContent).not.toContain('Live thread');
+    expect(getPanel(shadow).textContent).not.toContain('Assistant response');
+    expect(getPanel(shadow).querySelectorAll('.chat-msg--user')).toHaveLength(0);
+    expect(
+      collectDescendants(getPanel(shadow)).filter((n) => n.classList.contains('chat-chip--suggestion')),
+    ).toHaveLength(5);
+  });
+
   it('clears conversation, storage, and restores welcome', async () => {
     browser.sessionData.set(
       HISTORY_KEY,
@@ -277,7 +325,7 @@ describe('chat panel', () => {
     await vi.waitFor(() => expect(getPanel(shadow).textContent).toContain('Old message'));
 
     const clearBtn = [...collectDescendants(getPanel(shadow))].find(
-      (node) => node.getAttribute('aria-label') === 'Clear conversation',
+      (node) => node.getAttribute('aria-label') === 'Reset chat',
     );
     clearBtn?.click();
 
@@ -310,7 +358,7 @@ describe('chat panel', () => {
     });
 
     const clearBtn = [...collectDescendants(getPanel(shadow))].find(
-      (node) => node.getAttribute('aria-label') === 'Clear conversation',
+      (node) => node.getAttribute('aria-label') === 'Reset chat',
     );
     clearBtn?.click();
 
@@ -377,20 +425,11 @@ describe('chat panel', () => {
     expect(panel.textContent).toContain('Hi there');
   });
 
-  it('closes via header control and minimizes without closing', () => {
+  it('closes via header control', () => {
     const { launcher, shadow } = mountHost();
     openPanel();
 
     const panel = getPanel(shadow);
-    const minimizeBtn = [...collectDescendants(panel)].find(
-      (node) => node.getAttribute('aria-label') === 'Minimize chat',
-    );
-    minimizeBtn?.click();
-    expect(panel.classList.contains('chat-panel--minimized')).toBe(true);
-    expect(panel.hasAttribute('hidden')).toBe(false);
-    expect(launcher.getAttribute('aria-label')).toBe('Close chat');
-    expect(launcher.getAttribute('aria-expanded')).toBe('true');
-
     const closeBtn = [...collectDescendants(panel)].find(
       (node) => node.getAttribute('aria-label') === 'Close chat',
     );
@@ -400,6 +439,95 @@ describe('chat panel', () => {
     expect(launcher.getAttribute('aria-expanded')).toBe('false');
     expect(launcher.getAttribute('aria-label')).toBe('Open chat');
     expect(browser.getFocusedElement()).toBe(launcher);
+  });
+
+  it('builds Reset icon via DOM nodes with rotate-ccw paths, currentColor, and aria-hidden', () => {
+    const { shadow } = mountHost();
+    openPanel();
+
+    const resetBtn = getResetHeaderButton(getPanel(shadow));
+    expect(resetBtn.innerHTML).toBe('');
+    expect(resetBtn.childNodes).toHaveLength(1);
+    expect(resetBtn.childNodes[0]?.tagName).toBe('SVG');
+
+    const svg = resetBtn.querySelector('svg');
+    expect(svg).not.toBeNull();
+    expect(svg!.getAttribute('aria-hidden')).toBe('true');
+    expect(svg!.getAttribute('focusable')).toBe('false');
+    expect(svg!.getAttribute('fill')).toBe('none');
+    expect(svg!.getAttribute('viewBox')).toBe('0 0 24 24');
+
+    const paths = svg!.querySelectorAll('path');
+    expect(paths).toHaveLength(2);
+    expect(paths.map((path) => path.getAttribute('d'))).toEqual([
+      'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8',
+      'M3 3v5h5',
+    ]);
+    for (const path of paths) {
+      expect(path.getAttribute('stroke')).toBe('currentColor');
+      expect(path.getAttribute('stroke-width')).toBe('2');
+    }
+  });
+
+  it('header has exactly Reset and Close with accessible names and CSS tooltips', () => {
+    const { shadow } = mountHost();
+    openPanel();
+
+    const panel = getPanel(shadow);
+    const actions = panel.querySelector('.chat-panel__actions');
+    const headerButtons = [...(actions?.querySelectorAll('button') ?? [])];
+    expect(headerButtons).toHaveLength(2);
+    expect(headerButtons.map((btn) => btn.getAttribute('aria-label'))).toEqual([
+      'Reset chat',
+      'Close chat',
+    ]);
+
+    const resetBtn = headerButtons[0];
+    const closeBtn = headerButtons[1];
+
+    expect(resetBtn.getAttribute('data-tooltip')).toBe('Reset chat');
+    expect(closeBtn.getAttribute('data-tooltip')).toBe('Close chat');
+    expect(resetBtn.hasAttribute('title')).toBe(false);
+    expect(closeBtn.hasAttribute('title')).toBe(false);
+    expect(resetBtn.querySelector('svg')).not.toBeNull();
+    expect(closeBtn.textContent).toBe('×');
+  });
+
+  it('panel CSS keeps header tooltips unclipped with edge-aware Close placement', () => {
+    const panelRule = panelCss.match(/\.chat-panel\s*\{[^}]+\}/s)?.[0] ?? '';
+    expect(panelRule).not.toMatch(/\boverflow:\s*hidden\b/);
+
+    expect(panelCss).toMatch(/\.chat-panel__body\s*\{[^}]*overflow:\s*hidden/s);
+    expect(panelCss).toMatch(/\.chat-panel__header\s*\{[^}]*overflow:\s*visible/s);
+
+    expect(panelCss).toMatch(/\.chat-panel__icon-btn\[data-tooltip\]:hover::after/s);
+    expect(panelCss).toMatch(
+      /\.chat-panel__icon-btn\[data-tooltip\]:focus-visible::after/s,
+    );
+    expect(panelCss).toMatch(/opacity\s+120ms\s+ease\s+400ms/);
+    expect(panelCss).toMatch(/visibility\s+0s\s+linear\s+400ms/);
+
+    expect(panelCss).toMatch(
+      /\.chat-panel__actions\s*>\s*\.chat-panel__icon-btn:last-child\[data-tooltip\]::after[^}]*right:\s*0/s,
+    );
+    expect(panelCss).toMatch(
+      /\.chat-panel__actions\s*>\s*\.chat-panel__icon-btn:last-child\[data-tooltip\]:hover::after/s,
+    );
+    expect(panelCss).toMatch(/var\(--bg-raised/);
+    expect(panelCss).toMatch(/var\(--text-primary/);
+    expect(panelCss).toMatch(/var\(--border/);
+    expect(panelCss).toMatch(/prefers-reduced-motion:\s*reduce[\s\S]*\[data-tooltip\]/s);
+  });
+
+  it('omits minimize-only symbols from panel implementation, styles, and README', () => {
+    const minimizePattern =
+      /\bminimize\b|panel--minimized|chat-panel__minimize|aria-label=['"]Restore/i;
+
+    expect(panelSource).not.toMatch(minimizePattern);
+    expect(panelSource).not.toMatch(/clearBtn\.innerHTML/);
+    expect(panelCss).not.toMatch(minimizePattern);
+    expect(chatbotReadme).not.toMatch(/\bminimize\b/i);
+    expect(panelCss).toMatch(/\.chat-panel__icon-btn svg\s*\{/);
   });
 
   it('renders five quick actions in the toolbar', () => {

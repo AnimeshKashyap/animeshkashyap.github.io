@@ -30,13 +30,11 @@ type PanelElements = {
   form: HTMLFormElement;
   input: HTMLInputElement;
   send: HTMLButtonElement;
-  minimizeBtn: HTMLButtonElement;
   handlers: MessageHandlers;
 };
 
 let panelMounted = false;
 let panelVisible = false;
-let panelMinimized = false;
 let panelElements: PanelElements | undefined;
 let enginePromise: Promise<ChatEngine> | undefined;
 let busy = false;
@@ -175,8 +173,6 @@ function resetConversation(elements: PanelElements): void {
 
 function closePanel(elements: PanelElements): void {
   panelVisible = false;
-  panelMinimized = false;
-  setMinimized(elements.root, false);
   setPanelHidden(elements.root, true);
   syncLauncherExpanded(false);
   focusLauncher();
@@ -191,12 +187,45 @@ function getPageContext(): ActionContext {
   return { page: 'main' };
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
 function createIconButton(className: string, label: string): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = className;
   button.setAttribute('aria-label', label);
+  button.setAttribute('data-tooltip', label);
   return button;
+}
+
+function createRotateCcwIcon(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+
+  const stroke = {
+    stroke: 'currentColor',
+    'stroke-width': '2',
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+  };
+
+  const arc = document.createElementNS(SVG_NS, 'path');
+  arc.setAttribute('d', 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8');
+  for (const [name, value] of Object.entries(stroke)) {
+    arc.setAttribute(name, value);
+  }
+
+  const arrow = document.createElementNS(SVG_NS, 'path');
+  arrow.setAttribute('d', 'M3 3v5h5');
+  for (const [name, value] of Object.entries(stroke)) {
+    arrow.setAttribute(name, value);
+  }
+
+  svg.append(arc, arrow);
+  return svg;
 }
 
 function loadEngine(): Promise<ChatEngine> {
@@ -215,10 +244,6 @@ function setPanelHidden(root: HTMLElement, hidden: boolean): void {
   } else {
     root.removeAttribute('hidden');
   }
-}
-
-function setMinimized(root: HTMLElement, minimized: boolean): void {
-  root.classList.toggle('chat-panel--minimized', minimized);
 }
 
 function focusInput(input: HTMLInputElement): void {
@@ -317,16 +342,13 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   const actions = document.createElement('div');
   actions.className = 'chat-panel__actions';
 
-  const minimizeBtn = createIconButton('chat-panel__icon-btn', 'Minimize chat');
-  minimizeBtn.textContent = '−';
-
-  const clearBtn = createIconButton('chat-panel__icon-btn', 'Clear conversation');
-  clearBtn.textContent = '⌫';
+  const clearBtn = createIconButton('chat-panel__icon-btn', 'Reset chat');
+  clearBtn.appendChild(createRotateCcwIcon());
 
   const closeBtn = createIconButton('chat-panel__icon-btn', 'Close chat');
   closeBtn.textContent = '×';
 
-  actions.append(minimizeBtn, clearBtn, closeBtn);
+  actions.append(clearBtn, closeBtn);
   header.append(title, actions);
 
   const body = document.createElement('div');
@@ -379,7 +401,6 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
     form,
     input,
     send,
-    minimizeBtn,
     handlers: {
       onSuggestion: () => {},
       onAction: () => {},
@@ -406,16 +427,6 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
 
   input.addEventListener('input', () => {
     updateSendDisabled(input, send);
-  });
-
-  minimizeBtn.addEventListener('click', () => {
-    panelMinimized = !panelMinimized;
-    setMinimized(root, panelMinimized);
-    const ariaLabel = panelMinimized ? 'Restore chat' : 'Minimize chat';
-    minimizeBtn.setAttribute('aria-label', ariaLabel);
-    if (!panelMinimized) {
-      focusInput(input);
-    }
   });
 
   clearBtn.addEventListener('click', () => {
@@ -450,11 +461,6 @@ function showPanel(elements: PanelElements): void {
   panelVisible = true;
   setPanelHidden(elements.root, false);
   syncLauncherExpanded(true);
-  if (panelMinimized) {
-    panelMinimized = false;
-    setMinimized(elements.root, false);
-    elements.minimizeBtn.setAttribute('aria-label', 'Minimize chat');
-  }
   if (elements.log.childElementCount === 0) {
     ensureWelcome(elements);
   }
@@ -480,18 +486,10 @@ export function openPanel(): void {
 
   if (!panelVisible) {
     showPanel(panelElements);
-    return;
-  }
-
-  if (panelMinimized) {
-    panelMinimized = false;
-    setMinimized(panelElements.root, false);
-    panelElements.minimizeBtn.setAttribute('aria-label', 'Minimize chat');
-    focusInput(panelElements.input);
   }
 }
 
-/** Whether the chat panel is currently open (including minimized). */
+/** Whether the chat panel is currently open. */
 export function isPanelOpen(): boolean {
   return panelVisible;
 }

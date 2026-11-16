@@ -8,7 +8,7 @@ Retrieval-only assistant: no LLM. Answers come from `KnowledgeRecord`s built at 
 | --- | --- |
 | `index.ts` | `mountChatbot({ page: 'main' \| 'v4' })` — appends host + launcher (light entry chunk). |
 | `launcher.ts` | Shadow-DOM FAB; dynamically imports `panel/panel` on open. |
-| `panel/` | Chat UI; lazy-imports `engine` on first question. |
+| `panel/` | Chat UI; header Reset/Close expose `data-tooltip` labels (hover and focus-visible, theme tokens in `panel.css`); lazy-imports `engine` on first question. |
 | `config.ts` | Copy, suggested questions, retrieval threshold, action URLs/labels. |
 | `types.ts` | `KnowledgeRecord`, `Reply`, `ActionId`, `ChatEngine`. |
 | `knowledge/buildRecords.ts` | Maps `src/data/*.ts` → records. |
