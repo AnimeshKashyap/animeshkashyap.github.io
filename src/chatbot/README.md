@@ -61,6 +61,12 @@ npm test
 
 Vitest covers knowledge building, search, engine/intents, compose behavior, golden questions, launcher, and panel helpers. Also run `npm run lint` and `npm run build` before shipping.
 
+## Dock collision notes (static audit)
+
+At widths 768px and 1280px the desktop dock aligns with the panel's right edge; its closed column is bottom-left. The dock uses inherited theme tokens with dark fallbacks for `/v4/`. The launcher wrapper's stacking context is 30, below the main navigation (50) and `/v4/` JSON modal (40), and above `/v4/` controls (20–25).
+
+Width alone cannot guarantee separation: on short viewports the open dock can enter the top navigation or `/v4/` selector band, and an open `/v4/` scene customizer occupies the full-height left edge underneath the chatbot. These collisions cannot be eliminated by stacking order. Short-desktop tooltips open downward and may temporarily cover the chat panel. The greeting bubble and mobile dock layout are separate follow-up work. No browser or visual verification was performed.
+
 ## Optional embeddings reranker (not implemented)
 
 Today ranking is entirely MiniSearch + synonym/entity logic in `search.ts`. To add a reranker later without changing the UI contract:

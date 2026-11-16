@@ -38,5 +38,9 @@ describe('quick action dock', () => {
     expect(dockStyles).toContain('translateX(calc(var(--index) * 46px))');
     expect(dockStyles).toContain('@media (prefers-reduced-motion: reduce)');
     expect(dockStyles).toContain('.quick-dock, .quick-dock__button { transition: none; }');
+    expect(dockStyles).toContain('@media (min-width: 480px) and (max-height: 750px)');
+    expect(dockStyles).toContain('top: calc(100% + 8px); bottom: auto');
+    expect(dockStyles).toContain('@media (max-width: 223px)');
+    expect(dockStyles).toContain('.quick-dock__button:last-child::after { left: auto; right: 0;');
   });
 });

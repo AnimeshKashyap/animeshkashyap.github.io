@@ -33,6 +33,15 @@ export const dockStyles = `
     bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 56px + 12px + min(560px, 100dvh - max(16px, env(safe-area-inset-bottom, 0px)) - 56px - 12px - max(16px, env(safe-area-inset-top, 0px)) - 60px) + 10px);
   }
 }
+/* Keep the open row and its edge tooltips within narrow viewports. */
+@media (max-width: 479px) {
+  .launcher[aria-expanded="true"] ~ .quick-dock { left: max(0px, calc(100vw - env(safe-area-inset-right, 0px) - 224px)); }
+  .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button:first-child::after { left: 0; transform: none; }
+  .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button:last-child::after { left: auto; right: 0; transform: none; }
+}
+@media (max-width: 223px) {
+  .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button { transform: translateX(calc(var(--index) * (100vw - 40px) / 4)); }
+}
 @media (prefers-reduced-motion: reduce) {
   .quick-dock, .quick-dock__button { transition: none; }
 }
@@ -55,6 +64,10 @@ export const dockStyles = `
 }
 .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button::after {
   left: 50%; top: auto; bottom: calc(100% + 8px); transform: translateX(-50%);
+}
+/* On short desktop viewports, put tooltips below instead of beyond the top edge. */
+@media (min-width: 480px) and (max-height: 750px) {
+  .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button::after { top: calc(100% + 8px); bottom: auto; }
 }
 .quick-dock__button:hover::after, .quick-dock__button:focus-visible::after { opacity: 1; }
 `;
