@@ -151,6 +151,14 @@ export class MockElement {
     return this.attributes.get(name) ?? null;
   }
 
+  getAttributeNames(): string[] {
+    const names = [...this.attributes.keys()];
+    if (this.hidden && !names.includes('hidden')) {
+      names.push('hidden');
+    }
+    return names;
+  }
+
   removeAttribute(name: string): void {
     this.attributes.delete(name);
     if (name === 'hidden') {
