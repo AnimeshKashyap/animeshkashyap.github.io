@@ -18,6 +18,7 @@ describe('quick action dock', () => {
     expect(runAction).not.toHaveBeenCalled();
     for (const [index, [id, label]] of expected.entries()) {
       const button = buttons[index]!;
+      expect(button.getAttribute('data-action')).toBe(id);
       expect(button.getAttribute('aria-label')).toBe(label);
       expect(button.getAttribute('data-tooltip')).toBe(label);
       expect(button.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');

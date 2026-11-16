@@ -537,4 +537,23 @@ describe('chat panel', () => {
     expect(shadow.querySelector('.chat-panel__quick-actions')).toBeNull();
     expect(shadow.querySelector('.chat-chip--quick')).toBeNull();
   });
+
+  it('keeps the dock as a launcher sibling and switches its CSS state on open and close', async () => {
+    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
+    const { launcher, shadow } = mountHost();
+    const wrap = shadow.querySelector('.launcher-wrap')!;
+    const dock = wrap.querySelector('.quick-dock')!;
+    expect(wrap.childNodes.indexOf(dock)).toBeGreaterThan(wrap.childNodes.indexOf(launcher));
+    expect(dock.querySelectorAll('.quick-dock__button')).toHaveLength(5);
+    expect(launcher.getAttribute('aria-expanded')).toBe('false');
+
+    launcher.click();
+    await vi.waitFor(() => expect(launcher.getAttribute('aria-expanded')).toBe('true'));
+    expect(getPanel(shadow).querySelector('.quick-dock')).toBeNull();
+    expect(wrap.querySelector('.quick-dock')).toBe(dock);
+
+    launcher.click();
+    await vi.waitFor(() => expect(launcher.getAttribute('aria-expanded')).toBe('false'));
+    expect(wrap.querySelector('.quick-dock')).toBe(dock);
+  });
 });
