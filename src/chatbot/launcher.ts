@@ -1,4 +1,5 @@
 import { CHATBOT_CONFIG } from './config';
+import { createDock, dockStyles } from './dock';
 
 const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
 const LAUNCHER_BUBBLE_AUTO_HIDE_MS = 8000;
@@ -215,7 +216,7 @@ function launcherHostStyles(page: 'main' | 'v4'): string {
 }
 
 export function buildLauncherStyles(page: 'main' | 'v4'): string {
-  return `${launcherHostStyles(page)}${LAUNCHER_STYLE_BODY}`;
+  return `${launcherHostStyles(page)}${LAUNCHER_STYLE_BODY}${dockStyles}`;
 }
 
 function launcherBubbleSeen(): boolean {
@@ -317,6 +318,7 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
   });
 
   wrap.appendChild(button);
+  wrap.appendChild(createDock(page));
   shadow.appendChild(wrap);
   return button;
 }
