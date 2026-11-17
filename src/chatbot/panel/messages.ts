@@ -1,4 +1,4 @@
-import { CHATBOT_CONFIG } from '../config';
+import { CHATBOT_CONFIG, CHATBOT_KEYWORDS } from '../config';
 import type { ActionId, Reply } from '../types';
 
 export type MessageHandlers = {
@@ -149,10 +149,10 @@ export function appendWelcomeMessage(log: HTMLElement, handlers: MessageHandlers
   row.appendChild(bubble);
 
   const suggestions = createChipRow('chat-msg__chips', 'Suggested questions');
-  for (const question of CHATBOT_CONFIG.suggestedQuestions) {
+  for (const { label, query } of CHATBOT_KEYWORDS) {
     suggestions.appendChild(
-      createChipButton(question, 'chat-chip chat-chip--suggestion', () => {
-        handlers.onSuggestion(question);
+      createChipButton(label, 'chat-chip chat-chip--suggestion', () => {
+        handlers.onSuggestion(query);
       }),
     );
   }
@@ -214,7 +214,7 @@ function appendBotExtras(
     for (const question of reply.suggestions) {
       followUps.appendChild(
         createChipButton(question, 'chat-chip chat-chip--suggestion', () => {
-          handlers.onSuggestion(question);
+          handlers.onSuggestion(CHATBOT_KEYWORDS.find(({ label }) => label === question)?.query ?? question);
         }),
       );
     }
