@@ -530,12 +530,30 @@ describe('chat panel', () => {
     expect(panelCss).toMatch(/\.chat-panel__icon-btn svg\s*\{/);
   });
 
-  it('renders five quick actions in the toolbar', () => {
+  it('does not render a quick-action toolbar in the panel', () => {
     const { shadow } = mountHost();
     openPanel();
 
-    const quick = shadow.querySelector('.chat-panel__quick-actions');
-    expect(quick?.getAttribute('role')).toBe('toolbar');
-    expect(quick?.querySelectorAll('.chat-chip--quick')).toHaveLength(5);
+    expect(shadow.querySelector('.chat-panel__quick-actions')).toBeNull();
+    expect(shadow.querySelector('.chat-chip--quick')).toBeNull();
+  });
+
+  it('keeps the dock as a launcher sibling and switches its CSS state on open and close', async () => {
+    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
+    const { launcher, shadow } = mountHost();
+    const wrap = shadow.querySelector('.launcher-wrap')!;
+    const dock = wrap.querySelector('.quick-dock')!;
+    expect(wrap.childNodes.indexOf(dock)).toBeGreaterThan(wrap.childNodes.indexOf(launcher));
+    expect(dock.querySelectorAll('.quick-dock__button')).toHaveLength(5);
+    expect(launcher.getAttribute('aria-expanded')).toBe('false');
+
+    launcher.click();
+    await vi.waitFor(() => expect(launcher.getAttribute('aria-expanded')).toBe('true'));
+    expect(getPanel(shadow).querySelector('.quick-dock')).toBeNull();
+    expect(wrap.querySelector('.quick-dock')).toBe(dock);
+
+    launcher.click();
+    await vi.waitFor(() => expect(launcher.getAttribute('aria-expanded')).toBe('false'));
+    expect(wrap.querySelector('.quick-dock')).toBe(dock);
   });
 });

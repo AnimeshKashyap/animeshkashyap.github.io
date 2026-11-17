@@ -43,6 +43,8 @@ Duplicate IDs across `buildRecords()` and extras will fail validation/tests.
 
 Edit `config.ts`:
 
+- **`launcherSide`** — `'left'` (default) or `'right'`; mirrored onto the shadow host's `data-side`. Launcher, centered closed dock, desktop panel, and current greeting share this anchor with `max(16px, safe-area inset)` offsets. Vertical dock labels open inward; horizontal labels wrap above the row, anchored to its outer edge. Movement uses transforms, with reduced-motion overrides.
+
 - **`CHATBOT_RETRIEVAL_THRESHOLD`** and **`CHATBOT_CONFIG.retrievalThreshold`** — minimum top-hit score (0–1) before compose returns “I don't have that in the CV.” (used in `compose.ts`).
 - **`greeting`**, **`launcherBubbleText`**, **`suggestedQuestions`** — panel copy and follow-ups.
 - **`actions`** — one entry per `ActionId` (`cv`, `email`, `linkedin`, `github`, `projects`): `label`, `kind` (`open` \| `download` \| `mailto` \| `scroll`), `url`. CV/email/LinkedIn/GitHub pull from `src/data/profile.ts` where applicable.
@@ -60,6 +62,12 @@ npm test
 ```
 
 Vitest covers knowledge building, search, engine/intents, compose behavior, golden questions, launcher, and panel helpers. Also run `npm run lint` and `npm run build` before shipping.
+
+## Dock collision notes (static audit)
+
+The desktop dock aligns with the panel's configured outer edge; its closed column is centered on the launcher. The dock uses inherited theme tokens with dark fallbacks for `/v4/`. The launcher wrapper's stacking context is 30, below the main navigation (50) and `/v4/` JSON modal (40), and above `/v4/` controls (20–25).
+
+Width alone cannot guarantee separation: on short viewports the open dock can enter the top navigation or `/v4/` selector band. Short-height and compact layouts remain follow-up work; v4 customizer collision handling is out of scope. The greeting remains a bubble above the launcher, not a side tooltip. Geometry-based tests cover both sides and asymmetric safe areas; no browser or visual verification was performed.
 
 ## Optional embeddings reranker (not implemented)
 
