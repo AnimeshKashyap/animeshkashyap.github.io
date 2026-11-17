@@ -167,8 +167,8 @@ describe('chat panel', () => {
 
     expect(browser.sessionData.get(HISTORY_KEY)).toContain('Tell me about skills');
     expect(getPanel(shadow).querySelectorAll('.chat-msg--bot').length).toBeGreaterThan(0);
-    await vi.waitFor(() => expect(typing.hidden).toBe(true));
-    expect(input.disabled).toBe(false);
+    await vi.waitFor(() => expect(shadow.querySelector('.chat-panel__typing')).toBeNull());
+    await vi.waitFor(() => expect(input.disabled).toBe(false));
     expect(shadow.querySelector('.chat-panel__send')?.disabled).toBe(true);
   });
 
@@ -315,7 +315,7 @@ describe('chat panel', () => {
       expect(getPanel(shadow).textContent).toContain('Assistant response'),
     );
     await vi.waitFor(() =>
-      expect((shadow.querySelector('.chat-panel__typing') as MockElement).hidden).toBe(true),
+      expect(shadow.querySelector('.chat-panel__typing')).toBeNull(),
     );
     expect(browser.sessionData.get(HISTORY_KEY)).toContain('Live thread');
 
@@ -351,7 +351,7 @@ describe('chat panel', () => {
       .toHaveLength(5);
   });
 
-  it('ignores clear while a send is in progress', async () => {
+  it.each(['reset', 'close', 'Escape'])('cancels late engine replies on %s', async (control) => {
     let resolveAsk!: (reply: Reply) => void;
     engineBehavior.ask.mockImplementation(
       () =>
@@ -376,12 +376,33 @@ describe('chat panel', () => {
     const clearBtn = [...collectDescendants(getPanel(shadow))].find(
       (node) => node.getAttribute('aria-label') === 'Reset chat',
     );
-    clearBtn?.click();
-
-    expect(getPanel(shadow).textContent).toContain('busy');
-
-    resolveAsk(makeReply());
+    if (control === 'reset') clearBtn?.click();
+    else if (control === 'Escape') getPanel(shadow).dispatchEvent('keydown', { key: 'Escape' });
+    else collectDescendants(getPanel(shadow)).find((node) => node.getAttribute('aria-label') === 'Close chat')?.click();
+    expect(shadow.querySelector('.chat-panel__typing')).toBeNull();
+    resolveAsk(makeReply({ text: 'Cancelled answer' }));
     await vi.waitFor(() => expect(input.disabled).toBe(false));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(getPanel(shadow).textContent).not.toContain('Cancelled answer');
+    expect(browser.sessionData.get(HISTORY_KEY) ?? '').not.toContain('Cancelled answer');
+  });
+
+  it.each(['reset', 'close', 'Escape'])('cancels staged timers on %s', async (control) => {
+    browser.setReducedMotion(false);
+    const { shadow } = mountHost();
+    openPanel();
+    const input = shadow.querySelector('.chat-panel__input') as MockElement;
+    input.value = 'Stage this';
+    (shadow.querySelector('.chat-panel__form') as MockElement).dispatchEvent('submit');
+    await vi.waitFor(() => expect(engineBehavior.ask).toHaveBeenCalled());
+    if (control === 'reset') getResetHeaderButton(getPanel(shadow)).click();
+    else if (control === 'Escape') getPanel(shadow).dispatchEvent('keydown', { key: 'Escape' });
+    else collectDescendants(getPanel(shadow)).find((node) => node.getAttribute('aria-label') === 'Close chat')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(shadow.querySelector('.chat-panel__typing')).toBeNull();
+    expect(input.disabled).toBe(false);
+    expect(getPanel(shadow).textContent).not.toContain('Assistant response');
+    expect(browser.sessionData.get(HISTORY_KEY) ?? '').not.toContain('Assistant response');
   });
 
   it('closes on Escape and returns focus to the launcher', () => {
@@ -420,6 +441,8 @@ describe('chat panel', () => {
     form.dispatchEvent('submit');
     await vi.waitFor(() => expect(engineBehavior.ask).toHaveBeenCalled());
     expect(browser.sessionData.get(HISTORY_KEY)).toBeTruthy();
+    await vi.waitFor(() => expect(panel.textContent).toContain('Hi there'));
+    await vi.waitFor(() => expect(input.disabled).toBe(false));
 
     launcher.click();
     await vi.waitFor(() => expect(isPanelOpen()).toBe(false));

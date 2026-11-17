@@ -35,6 +35,7 @@ describe('chat panel messages', () => {
   let browser: BrowserGlobalsHandle;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     browser = installBrowserGlobals();
   });
 
@@ -153,24 +154,48 @@ describe('chat panel messages', () => {
     expect(bubble?.classList.contains('chat-msg__bubble--reveal')).toBe(false);
   });
 
-  it('runs staged reveal animation without reduced motion', async () => {
-    vi.useFakeTimers();
+  it('stages bubbles, sources and actions every 100ms, then all suggestions', async () => {
     const log = createMessageLog();
     browser.setReducedMotion(false);
+    const completion = appendBotMessage(log, makeReply({
+      bubbles: ['First', 'Second'],
+      sources: [{ id: 'one', label: 'Source' }],
+      actions: ['cv', 'email'],
+      suggestions: ['Next?', 'More?'],
+    }), { onSuggestion: vi.fn(), onAction: vi.fn() });
+    expect(log.querySelectorAll('.chat-panel__typing-dots span')).toHaveLength(3);
+    expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(99);
+    expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(1);
+    expect(log.querySelectorAll('.chat-panel__typing-dots span')).toHaveLength(3);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(2);
+    expect(log.querySelector('.chat-panel__typing')).toBeNull();
+    expect(log.querySelectorAll('.chat-msg__source-chip')).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(log.querySelectorAll('.chat-msg__source-chip')).toHaveLength(1);
+    expect(log.querySelectorAll('.chat-chip--action')).toHaveLength(0);
+    expect(log.querySelectorAll('.chat-chip--suggestion')).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(100);
+    await completion;
+    expect(log.querySelectorAll('.chat-chip--action')).toHaveLength(2);
+    expect(log.querySelectorAll('.chat-chip--suggestion')).toHaveLength(2);
+    expect(vi.getTimerCount()).toBe(0);
+  });
 
-    const revealPromise = appendBotMessage(
-      log,
-      makeReply({ text: 'Line one\nLine two' }),
-      { onSuggestion: vi.fn(), onAction: vi.fn() },
-    );
-
-    const bubble = log.querySelector('.chat-msg__bubble');
-    expect(bubble?.classList.contains('chat-msg__bubble--reveal')).toBe(true);
-
-    await vi.runAllTimersAsync();
-    await revealPromise;
-
-    expect(bubble?.classList.contains('chat-msg__bubble--reveal')).toBe(false);
+  it('aborts a pending reveal and clears its timer', async () => {
+    browser.setReducedMotion(false);
+    const log = createMessageLog();
+    const controller = new AbortController();
+    const completion = appendBotMessage(log, makeReply(), {
+      onSuggestion: vi.fn(), onAction: vi.fn(),
+    }, { signal: controller.signal });
+    controller.abort();
+    await completion;
+    expect(vi.getTimerCount()).toBe(0);
+    expect(log.childElementCount).toBe(0);
   });
 
   it('toggles typing indicator visibility and aria-hidden', () => {
