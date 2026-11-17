@@ -22,16 +22,16 @@ describe('dedicated grounded total-experience answer', () => {
     vi.useRealTimers();
   });
 
-  // TEMP (12a): verified RED; 12b/12c must activate by replacing it.fails.each with it.each.
-  it.fails.each(QUERIES)('ranks the total-experience FAQ first for "%s"', (query) => {
+  // Activated in 12b: the grounded record satisfies this regression without engine changes.
+  it.each(QUERIES)('ranks the total-experience FAQ first for "%s"', (query) => {
     const hits = createSearcher(getRecords()).search(query);
     expect(hits[0]?.record.id).toBe(TOTAL_EXPERIENCE_ID);
     expect(hits[0]?.record.type).toBe('faq');
     expect(hits[0]?.record.text).toContain('8 years 7 months');
   });
 
-  // TEMP (12a): verified RED; 12b/12c must activate by replacing it.fails.each with it.each.
-  it.fails.each(QUERIES)('answers "%s" concisely with a grounded duration and source chip', async (query) => {
+  // Activated in 12b: the grounded record satisfies this regression without engine changes.
+  it.each(QUERIES)('answers "%s" concisely with a grounded duration and source chip', async (query) => {
     const records = getRecords();
     const reply = await createEngine().ask(query);
     expect(reply.confident).toBe(true);
