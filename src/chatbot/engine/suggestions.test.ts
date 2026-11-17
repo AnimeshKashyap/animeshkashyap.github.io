@@ -2,7 +2,70 @@ import { describe, expect, it } from 'vitest';
 import { CHATBOT_KEYWORDS } from '../config';
 import { getRecords } from '../knowledge';
 import type { KnowledgeRecord } from '../types';
-import { buildSuggestionCorpus, SUGGESTION_CORPUS } from './suggestions';
+import { buildSuggestionCorpus, SUGGESTION_CORPUS, suggest } from './suggestions';
+
+describe('ranked autocomplete matching', () => {
+  it('requires two normalized typed characters and returns no unrelated results', () => {
+    for (const prefix of ['', ' ', 'a', 'a !', '?!', 'unmatchablexyz', 'skills unmatchablexyz']) {
+      expect(suggest(prefix)).toEqual([]);
+    }
+    expect(suggest('wh')).toHaveLength(3);
+  });
+
+  it('ranks sentence starts ahead of word starts and aliases in stable corpus order', () => {
+    expect(suggest('which')).toEqual([
+      'Which technologies and skills does he focus on?',
+      ...SUGGESTION_CORPUS.filter((sentence) => sentence.startsWith('Which technologies did')).slice(0, 2),
+    ]);
+    expect(suggest('how')).toEqual(CHATBOT_KEYWORDS
+      .map(({ query }) => query).filter((query) => query.startsWith('How')));
+    expect(suggest('technologies')[0]).toBe('Which technologies and skills does he focus on?');
+    expect(suggest('project')[0]).toBe('What projects has he built?');
+    // The literal work match stays ahead of synonym-only experience matches.
+    expect(suggest('work')).toEqual([
+      'Summarize his work experience.',
+      'How many years of experience does he have?',
+    ]);
+  });
+
+  it('matches every token at word starts in any order, not arbitrary substrings', () => {
+    expect(suggest('ski whi')[0]).toBe('Which technologies and skills does he focus on?');
+    expect(suggest('whi ski')).toEqual(suggest('ski whi'));
+    expect(suggest('kills')).toEqual([]);
+    expect(suggest('skills nonexistent')).toEqual([]);
+  });
+
+  it('uses category, technical, and multiword aliases from synonyms', () => {
+    expect(suggest('career')[0]).toBe('Summarize his work experience.');
+    expect(suggest('college')).toEqual(['What is his education?']);
+    expect(suggest('curriculum vitae')).toEqual(['How can I download his resume?']);
+    expect(suggest('tech stack')[0]).toBe('Which technologies and skills does he focus on?');
+  });
+
+  it('normalizes case, punctuation, accents, and whitespace without changing output copy', () => {
+    expect(suggest('  WHÍCH,,,   SKÍ  ')).toEqual(suggest('which ski'));
+    expect(suggest('RÉSUMÉ')).toEqual(suggest('resume'));
+    expect(suggest('CV')).toEqual(['How can I download his resume?']);
+  });
+
+  it('caps limits at three, handles empty limits, and returns independent deduplicated arrays', () => {
+    expect(suggest('what', 1)).toHaveLength(1);
+    expect(suggest('what', 2)).toHaveLength(2);
+    expect(suggest('what', 99)).toHaveLength(3);
+    for (const limit of [0, -1, NaN]) expect(suggest('what', limit)).toEqual([]);
+    expect(suggest('what', 1.9)).toHaveLength(1);
+    const result = suggest('what');
+    expect(new Set(result).size).toBe(result.length);
+    result.length = 0;
+    expect(suggest('what')).toHaveLength(3);
+  });
+
+  it('never returns the exact normalized typed sentence', () => {
+    for (const sentence of SUGGESTION_CORPUS) {
+      expect(suggest(sentence.toUpperCase().replace(/[.?]/g, '!'))).not.toContain(sentence);
+    }
+  });
+});
 
 const records = getRecords();
 
