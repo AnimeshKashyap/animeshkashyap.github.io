@@ -8,12 +8,19 @@ export function replyBubbles(blocks: readonly string[]): string[] {
     for (const part of parts) {
       const words = part.trim().split(/\s+/u);
       let line = '';
-      for (const word of words) {
+      for (let word of words) {
         if (line && line.length + word.length + 1 > 400) {
           if (current) bubbles.push(current);
           bubbles.push(line);
           current = '';
           line = '';
+        }
+        // A token without word boundaries still has to respect the hard limit.
+        while (word.length > 400) {
+          if (current) bubbles.push(current);
+          current = '';
+          bubbles.push(word.slice(0, 400));
+          word = word.slice(400);
         }
         line += `${line ? ' ' : ''}${word}`;
       }

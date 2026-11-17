@@ -64,6 +64,31 @@ describe('grounded conversational composition', () => {
     expect(reply.sources.map((source) => source.id)).toEqual(records.map((record) => record.id));
   });
 
+  it.each([399, 400, 401, 799, 800, 801, 1200, 2401])(
+    'bounds a %i-character unbroken token without losing content', (length) => {
+      const token = 'x'.repeat(length);
+      const bubbles = replyBubbles([token]);
+      expect(bubbles.every((bubble) => bubble.length > 0 && bubble.length <= 400)).toBe(true);
+      expect(bubbles.join('')).toBe(token);
+      expect(replyBubbles([token])).toEqual(bubbles);
+      if (length <= 400) expect(bubbles).toEqual([token]);
+    },
+  );
+
+  it('keeps surrounding words and paragraphs ordered around oversized tokens', () => {
+    const token = 'x'.repeat(801);
+    expect(replyBubbles([`Lead-in.\nBefore ${token} after.`])).toEqual([
+      'Lead-in.', 'Before', 'x'.repeat(400), 'x'.repeat(400), 'x after.',
+    ]);
+  });
+
+  it('retains normal exact-fit word and line boundaries', () => {
+    expect(replyBubbles([`${'x'.repeat(398)} y`])).toEqual([`${'x'.repeat(398)} y`]);
+    expect(replyBubbles([`${'x'.repeat(399)} y`])).toEqual(['x'.repeat(399), 'y']);
+    expect(replyBubbles([`${'x'.repeat(398)}\ny`])).toEqual([`${'x'.repeat(398)}\ny`]);
+    expect(replyBubbles(['', ' \n ', 'Normal reply.'])).toEqual(['Normal reply.']);
+  });
+
   it('wraps oversized prose without dropping words', () => {
     const text = Array.from({ length: 150 }, () => 'grounded').join(' ');
     const bubbles = replyBubbles([text]);
