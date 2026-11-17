@@ -220,9 +220,54 @@ function educationRecords(used: Set<string>): KnowledgeRecord[] {
   return [...entries, awardsRecord, languagesRecord];
 }
 
-export function buildRecords(): KnowledgeRecord[] {
-  const used = new Set<string>();
+// User-approved estimate: count from Daffodil Software (Apr 2018), deliberately
+// not Wish A Design (Apr 2017). This accounts for small breaks and matches the
+// CV's 8+ years stat; the reply itself needs no counting-policy caveats.
+const CAREER_START = { year: 2018, month: 3 } as const;
+
+function totalExperienceRecord(now: Date): KnowledgeRecord {
+  const totalMonths = Math.max(
+    0,
+    (now.getUTCFullYear() - CAREER_START.year) * 12 + now.getUTCMonth() - CAREER_START.month,
+  );
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+  const duration = [
+    years > 0 ? `${years} ${years === 1 ? 'year' : 'years'}` : undefined,
+    months > 0 || years === 0 ? `${months} ${months === 1 ? 'month' : 'months'}` : undefined,
+  ].filter((part) => part !== undefined).join(' ');
+  const items = skillGroups.flatMap((group) => group.items);
+  const supported = (term: string): boolean => {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`\\b${escaped}\\b`, 'i');
+    return items.some((item) => pattern.test(item)) || pattern.test(profile.summary);
+  };
+  const skills = ['Python', 'Node.js', 'React.js', 'AWS'].filter(supported);
+  if (supported('System Design') || supported('architecture design')) {
+    skills.push('architecture design');
+  }
+  const aliases = [
+    'total experience', 'years of experience', 'how long',
+    'how experienced', 'career length', 'seniority',
+  ];
+  return {
+    id: 'faq-total-experience',
+    type: 'faq',
+    title: 'Total experience',
+    text: `${profile.name} has ${duration} of experience${skills.length > 0 ? ` across ${skills.join(', ')}` : ''}.`,
+    source: 'Experience: Career summary',
+    tags: [...aliases],
+    // Experience phrases stay in tags: alias token indexing would otherwise
+    // treat generic "experience" as a named entity and hide career-history hits.
+    aliases: aliases.filter((alias) => !alias.includes('experience')),
+    available: true,
+  };
+}
+
+export function buildRecords(now: Date = new Date()): KnowledgeRecord[] {
+  const used = new Set<string>(['faq-total-experience']);
   return [
+    totalExperienceRecord(now),
     ...profileRecords(used),
     ...experienceRecords(used),
     ...projectRecords(used),
