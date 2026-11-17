@@ -208,7 +208,9 @@ describe('chat panel', () => {
 
 
   it.each(['legacy', 'bubbles'] as const)('restores %s session history without replaying reveal', async (format) => {
-    const reply: Partial<Reply> = makeReply({ text: 'Stored answer', sources: [], actions: [], suggestions: [] });
+    vi.useFakeTimers();
+    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
+    const reply: Partial<Reply> = makeReply({ text: 'Stored answer' });
     if (format === 'legacy') {
       delete reply.bubbles;
     } else {
@@ -227,14 +229,24 @@ describe('chat panel', () => {
     const { shadow } = mountHost();
     openPanel();
 
-    await vi.waitFor(() => {
-      expect(getPanel(shadow).textContent).toContain('Stored question');
-      expect(getPanel(shadow).textContent).toContain('Stored answer');
-    });
-    if (format === 'bubbles') {
-      expect(getPanel(shadow).textContent).toContain('Second bubble');
-      expect(getPanel(shadow).textContent).not.toContain('Stale compatibility text');
-    }
+    const panel = getPanel(shadow);
+    expect(panel.textContent).toContain('Stored question');
+    expect(panel.querySelectorAll('.chat-msg--bot').map((row) =>
+      row.querySelector('.chat-msg__bubble')?.textContent,
+    )).toEqual(format === 'legacy' ? ['Stored answer'] : ['Stored answer', 'Second bubble']);
+    expect(panel.textContent).not.toContain('Stale compatibility text');
+    expect(panel.querySelectorAll('.chat-msg__source-chip').map((chip) => chip.textContent))
+      .toEqual(['Profile']);
+    expect(panel.querySelectorAll('.chat-chip--action').map((chip) => chip.textContent))
+      .toEqual([CHATBOT_CONFIG.actions.linkedin.label]);
+    expect(panel.querySelectorAll('.chat-chip--suggestion').map((chip) => chip.textContent))
+      .toEqual(['Follow up question?']);
+    expect(panel.querySelector('.chat-panel__typing')).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+    await Promise.resolve();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(engineBehavior.ask).not.toHaveBeenCalled();
+    expect(browser.sessionData.get(HISTORY_KEY)).toBe(JSON.stringify(stored));
 
     const welcomeSuggestions = collectDescendants(getPanel(shadow)).filter(
       (node) =>
