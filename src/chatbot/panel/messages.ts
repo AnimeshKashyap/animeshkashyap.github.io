@@ -8,42 +8,45 @@ export type MessageHandlers = {
 
 export type AppendBotMessageOptions = {
   reveal?: boolean;
+  signal?: AbortSignal;
 };
 
-const REVEAL_PART_DELAY_MS = 70;
-const REVEAL_PART_DURATION_MS = 320;
+const REVEAL_DELAY_MS = 100;
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-function delay(ms: number): Promise<void> {
+function delay(signal?: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
+    const finish = (): void => {
+      window.clearTimeout(timer);
+      signal?.removeEventListener('abort', finish);
+      resolve();
+    };
+    const timer = window.setTimeout(finish, REVEAL_DELAY_MS);
+    signal?.addEventListener('abort', finish, { once: true });
+    if (signal?.aborted) finish();
   });
 }
 
-async function revealBubbleText(bubble: HTMLElement): Promise<void> {
-  if (prefersReducedMotion()) {
-    return;
+export function appendTypingMessage(log: HTMLElement): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'chat-msg chat-msg--bot chat-panel__typing';
+  row.setAttribute('aria-label', 'Assistant is typing');
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-msg__bubble';
+  const dots = document.createElement('span');
+  dots.className = 'chat-panel__typing-dots';
+  dots.setAttribute('aria-hidden', 'true');
+  for (let index = 0; index < 3; index += 1) {
+    dots.appendChild(document.createElement('span'));
   }
-
-  const parts = [...bubble.children] as HTMLElement[];
-  if (parts.length === 0) {
-    return;
-  }
-
-  bubble.classList.add('chat-msg__bubble--reveal');
-  for (let index = 0; index < parts.length; index += 1) {
-    parts[index].style.animationDelay = `${index * REVEAL_PART_DELAY_MS}ms`;
-  }
-
-  const totalMs = (parts.length - 1) * REVEAL_PART_DELAY_MS + REVEAL_PART_DURATION_MS;
-  await delay(totalMs);
-  bubble.classList.remove('chat-msg__bubble--reveal');
-  for (const part of parts) {
-    part.style.removeProperty('animation-delay');
-  }
+  bubble.appendChild(dots);
+  row.appendChild(bubble);
+  log.appendChild(row);
+  scrollLogToBottom(log);
+  return row;
 }
 
 function scrollLogToBottom(log: HTMLElement): void {
@@ -225,24 +228,41 @@ export async function appendBotMessage(
   handlers: MessageHandlers,
   options: AppendBotMessageOptions = {},
 ): Promise<void> {
-  const reveal = options.reveal !== false;
-
-  const row = document.createElement('div');
-  row.className = 'chat-msg chat-msg--bot';
-
-  const bubble = document.createElement('div');
-  bubble.className = 'chat-msg__bubble';
-  appendFormattedText(bubble, reply.text);
-
-  row.appendChild(bubble);
-  log.appendChild(row);
-
-  if (reveal) {
-    await revealBubbleText(bubble);
+  const staged = options.reveal !== false && !prefersReducedMotion();
+  const { signal } = options;
+  if (signal?.aborted) return;
+  let row: HTMLElement | undefined;
+  for (const text of reply.bubbles ?? [reply.text]) {
+    const typing = staged ? appendTypingMessage(log) : undefined;
+    if (staged) await delay(signal);
+    typing?.parentNode?.removeChild(typing);
+    if (signal?.aborted) return;
+    row = document.createElement('div');
+    row.className = 'chat-msg chat-msg--bot';
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-msg__bubble';
+    appendFormattedText(bubble, text);
+    row.appendChild(bubble);
+    log.appendChild(row);
+    scrollLogToBottom(log);
   }
-
-  appendBotExtras(row, reply, handlers);
-  scrollLogToBottom(log);
+  row ??= document.createElement('div');
+  if (!row.parentNode) {
+    row.className = 'chat-msg chat-msg--bot';
+    log.appendChild(row);
+  }
+  const extras = document.createElement('div');
+  appendBotExtras(extras, reply, handlers);
+  for (const group of [...extras.children]) {
+    if (staged && group.getAttribute('aria-label') !== 'Suggested follow-up questions') {
+      const typing = appendTypingMessage(log);
+      await delay(signal);
+      typing.parentNode?.removeChild(typing);
+    }
+    if (signal?.aborted) return;
+    row.appendChild(group);
+    scrollLogToBottom(log);
+  }
 }
 
 export function setTypingVisible(typingEl: HTMLElement, visible: boolean): void {

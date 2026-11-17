@@ -1,5 +1,6 @@
 import { CHATBOT_CONFIG } from '../config';
 import type { ActionId, Reply } from '../types';
+import { recordBubbles } from './bubbles';
 
 function normalizeIntentQuery(query: string): string {
   return query
@@ -14,8 +15,10 @@ function normalizeIntentQuery(query: string): string {
 }
 
 function intentReply(text: string, actions: ActionId[]): Reply {
+  const bubbles = recordBubbles(text);
   return {
-    text,
+    bubbles,
+    text: bubbles.join('\n\n'),
     sources: [],
     actions,
     suggestions: [...CHATBOT_CONFIG.suggestedQuestions],

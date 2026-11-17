@@ -46,8 +46,8 @@ describe('dedicated grounded total-experience answer', () => {
 
     const faq = records.find((record) => record.id === TOTAL_EXPERIENCE_ID);
     expect(faq).toBeDefined();
-    expect(reply.text).toBe(`${faq!.title}\n${faq!.text}`);
-    expect(reply.text.split('\n')).toHaveLength(2);
+    expect(reply.bubbles).toEqual([faq!.title, faq!.text]);
+    expect(reply.text).toBe(reply.bubbles.join('\n\n'));
     expect(reply.sources).toEqual([{ id: TOTAL_EXPERIENCE_ID, label: faq!.source }]);
     expect(faq!.text).toContain('8 years 7 months');
   });

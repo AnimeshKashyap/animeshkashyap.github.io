@@ -85,6 +85,23 @@ describe('createEngine().ask()', () => {
     expect(reply.actions).toEqual(expected);
   });
 
+  it.each([
+    'hello',
+    'what can you do',
+    'open linkedin',
+    'download your cv',
+    'how can I contact you',
+    'what experience do you have with Python',
+    'tell me about your experience',
+    'what is your favourite pizza',
+    '',
+  ])('preserves the joined-text compatibility contract for "%s"', async (query) => {
+    const reply = await engine.ask(query);
+    expect(reply.bubbles.length).toBeGreaterThan(0);
+    expect(reply.bubbles.every((bubble) => bubble.length > 0 && bubble.length <= 400)).toBe(true);
+    expect(reply.text).toBe(reply.bubbles.join('\n\n'));
+  });
+
   it('help intent returns no navigation actions', async () => {
     const reply = await engine.ask('what can you do');
     expect(reply.confident).toBe(true);

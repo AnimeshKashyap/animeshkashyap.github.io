@@ -389,13 +389,6 @@
 
 .chat-panel__typing {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 16px 8px;
-  font-size: 12px;
-  color: var(--text-secondary, #9aa3b8);
-  background: var(--bg, #05070d);
 }
 
 .chat-panel__typing[hidden] {

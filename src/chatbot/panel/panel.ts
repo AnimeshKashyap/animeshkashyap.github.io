@@ -2,11 +2,12 @@ import panelCss from './panel.css?inline';
 import { runAction, type ActionContext } from '../engine/actions';
 import {
   appendBotMessage,
+  appendTypingMessage,
   appendUserMessage,
   appendWelcomeMessage,
   clearMessageLog,
   createMessageLog,
-  setTypingVisible,
+
   type MessageHandlers,
 } from './messages';
 import type { ChatEngine, Reply } from '../types';
@@ -23,7 +24,7 @@ type HistoryEntry =
 type PanelElements = {
   root: HTMLElement;
   log: HTMLElement;
-  typing: HTMLElement;
+
   form: HTMLFormElement;
   input: HTMLInputElement;
   send: HTMLButtonElement;
@@ -35,6 +36,8 @@ let panelVisible = false;
 let panelElements: PanelElements | undefined;
 let enginePromise: Promise<ChatEngine> | undefined;
 let busy = false;
+let pendingResponse: AbortController | undefined;
+let pendingTyping: HTMLElement | undefined;
 let messageHistory: HistoryEntry[] = [];
 
 function getChatbotShadow(): ShadowRoot | null {
@@ -72,13 +75,17 @@ function historyStorageKey(): string {
   return `${CHAT_HISTORY_STORAGE_PREFIX}:${page}`;
 }
 
-function isValidReply(value: unknown): value is Reply {
+type StoredReply = Omit<Reply, 'bubbles'> & { bubbles?: string[] };
+
+function isValidReply(value: unknown): value is StoredReply {
   if (typeof value !== 'object' || value === null) {
     return false;
   }
   const record = value as Record<string, unknown>;
   return (
     typeof record.text === 'string' &&
+    (record.bubbles === undefined ||
+      (Array.isArray(record.bubbles) && record.bubbles.every((bubble) => typeof bubble === 'string'))) &&
     Array.isArray(record.sources) &&
     Array.isArray(record.actions) &&
     Array.isArray(record.suggestions) &&
@@ -104,7 +111,11 @@ function parseStoredHistory(raw: string): HistoryEntry[] | null {
         continue;
       }
       if (record.kind === 'bot' && isValidReply(record.reply)) {
-        entries.push({ kind: 'bot', reply: record.reply });
+        const bubbles = record.reply.bubbles ?? [record.reply.text];
+        entries.push({
+          kind: 'bot',
+          reply: { ...record.reply, bubbles, text: bubbles.join('\n\n') },
+        });
         continue;
       }
       return null;
@@ -162,6 +173,7 @@ async function restoreMessageHistory(elements: PanelElements): Promise<void> {
 }
 
 function resetConversation(elements: PanelElements): void {
+  cancelResponse(elements);
   messageHistory = [];
   persistMessageHistory();
   clearMessageLog(elements.log);
@@ -169,6 +181,7 @@ function resetConversation(elements: PanelElements): void {
 }
 
 function closePanel(elements: PanelElements): void {
+  cancelResponse(elements);
   panelVisible = false;
   setPanelHidden(elements.root, true);
   syncLauncherExpanded(false);
@@ -253,6 +266,16 @@ function ensureWelcome(elements: PanelElements): void {
   }
 }
 
+function cancelResponse(elements: PanelElements): void {
+  pendingResponse?.abort();
+  pendingResponse = undefined;
+  if (pendingTyping) pendingTyping.parentNode?.removeChild(pendingTyping);
+  pendingTyping = undefined;
+  busy = false;
+  elements.input.disabled = false;
+  updateSendDisabled(elements.input, elements.send);
+}
+
 async function handleQuery(elements: PanelElements, query: string): Promise<void> {
   if (busy) {
     return;
@@ -263,6 +286,8 @@ async function handleQuery(elements: PanelElements, query: string): Promise<void
   }
 
   busy = true;
+  const controller = new AbortController();
+  pendingResponse = controller;
   elements.input.disabled = true;
   updateSendDisabled(elements.input, elements.send);
 
@@ -271,20 +296,26 @@ async function handleQuery(elements: PanelElements, query: string): Promise<void
   persistMessageHistory();
   elements.input.value = '';
   updateSendDisabled(elements.input, elements.send);
-  setTypingVisible(elements.typing, true);
+  const typing = appendTypingMessage(elements.log);
+  pendingTyping = typing;
 
   try {
     const engine = await loadEngine();
+    if (controller.signal.aborted) return;
     const reply = await engine.ask(trimmed);
-    await appendBotMessage(elements.log, reply, elements.handlers);
+    if (controller.signal.aborted) return;
+    typing.parentNode?.removeChild(typing);
+    pendingTyping = undefined;
+    await appendBotMessage(elements.log, reply, elements.handlers, { signal: controller.signal });
+    if (controller.signal.aborted) return;
     messageHistory.push({ kind: 'bot', reply });
     persistMessageHistory();
   } finally {
-    setTypingVisible(elements.typing, false);
-    busy = false;
-    elements.input.disabled = false;
-    updateSendDisabled(elements.input, elements.send);
-    focusInput(elements.input);
+    typing.parentNode?.removeChild(typing);
+    if (pendingResponse === controller) {
+      cancelResponse(elements);
+      focusInput(elements.input);
+    }
   }
 }
 
@@ -331,20 +362,7 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
 
   const log = createMessageLog();
 
-  const typing = document.createElement('div');
-  typing.className = 'chat-panel__typing';
-  typing.hidden = true;
-  typing.setAttribute('aria-hidden', 'true');
 
-  const typingLabel = document.createElement('span');
-  typingLabel.textContent = 'Assistant is typing';
-  const dots = document.createElement('span');
-  dots.className = 'chat-panel__typing-dots';
-  dots.setAttribute('aria-hidden', 'true');
-  for (let i = 0; i < 3; i += 1) {
-    dots.appendChild(document.createElement('span'));
-  }
-  typing.append(typingLabel, dots);
 
 
   const form = document.createElement('form');
@@ -371,7 +389,7 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   const elements: PanelElements = {
     root,
     log,
-    typing,
+
     form,
     input,
     send,
@@ -390,7 +408,7 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
     },
   };
 
-  body.append(log, typing, form);
+  body.append(log, form);
   root.append(header, body);
   shadow.appendChild(root);
 
@@ -404,9 +422,6 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   });
 
   clearBtn.addEventListener('click', () => {
-    if (busy) {
-      return;
-    }
     resetConversation(elements);
     focusInput(input);
   });

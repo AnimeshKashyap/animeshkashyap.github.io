@@ -266,6 +266,14 @@ describe('golden visitor questions', () => {
   it.each(GOLDEN_VISITOR_QUESTIONS)('"%s"', async (query, expected) => {
     const reply = await engine.ask(query);
     expect(reply.text.length).toBeGreaterThan(0);
+    expect(reply.bubbles.join('\n\n')).toBe(reply.text);
+    expect(reply.bubbles.length).toBeGreaterThan(0);
+    expect(reply.bubbles.length).toBeLessThanOrEqual(5);
+    expect(reply.bubbles.every((bubble) => bubble.trim().length > 0 && bubble.length <= 400)).toBe(true);
+    if (['hello', 'what can you do', 'Summarize his work experience.',
+      'Which technologies and skills does he focus on?', 'Real-Time Chat Application'].includes(query)) {
+      expect(reply.bubbles.length).toBeGreaterThan(1);
+    }
     expect(reply.confident).toBe(expected.confident);
     expect(reply.actions).toEqual([...expected.actions]);
 

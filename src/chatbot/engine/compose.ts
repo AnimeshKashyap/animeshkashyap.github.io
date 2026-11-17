@@ -2,6 +2,7 @@ import { CHATBOT_CONFIG } from '../config';
 import type { ActionId, KnowledgeRecord, KnowledgeRecordType, Reply } from '../types';
 import type { SearchHit } from './search';
 import { canonicalize, normalize } from './synonyms';
+import { recordBubbles, replyBubbles } from './bubbles';
 
 const MAX_HIGHLIGHTS = 3;
 const LOW_CONFIDENCE_TEXT = "I don't have that in the CV.";
@@ -260,6 +261,7 @@ const MONTH_TO_INDEX: Record<string, number> = {
 const DATED_AGGREGATE_TYPES: ReadonlySet<KnowledgeRecordType> = new Set([
   'experience',
   'project',
+  'education',
 ]);
 
 function parsePeriodToken(token: string): number | undefined {
@@ -376,7 +378,7 @@ function recordsInAggregateOrder(hits: readonly SearchHit[]): KnowledgeRecord[] 
   return ordered;
 }
 
-function formatAggregate(hits: SearchHit[]): string {
+function formatAggregate(hits: SearchHit[]): string[] {
   const byType = recordsByTypeFromHits(hits);
   const stableOrder = stableHitOrder(hits);
 
@@ -398,14 +400,14 @@ function formatAggregate(hits: SearchHit[]): string {
     if (multipleTypes) {
       const label = SECTION_LABEL[type];
       if (label !== undefined) {
-        blocks.push(`${label}:\n${lines.join('\n')}`);
+        blocks.push(...lines.map((line, index) => index === 0 ? `${label}:\n${line}` : line));
         continue;
       }
     }
-    blocks.push(lines.join('\n'));
+    blocks.push(...lines);
   }
 
-  return blocks.join('\n\n');
+  return replyBubbles(blocks);
 }
 
 function isContactRecord(record: KnowledgeRecord): boolean {
@@ -465,8 +467,10 @@ function pickFollowUps(hits: SearchHit[]): string[] {
 }
 
 function lowConfidenceReply(): Reply {
+  const bubbles = [LOW_CONFIDENCE_TEXT];
   return {
-    text: LOW_CONFIDENCE_TEXT,
+    bubbles,
+    text: bubbles.join('\n\n'),
     sources: [],
     actions: ['email'],
     suggestions: FOLLOW_UP_POOL.slice(0, 3),
@@ -547,13 +551,14 @@ export function composeReply(hits: SearchHit[], query: string): Reply {
     hits.length === 1
       ? hits.map((hit) => hit.record)
       : recordsInAggregateOrder(hits);
-  const text =
+  const bubbles =
     hits.length === 1
-      ? formatSingleRecord(hits[0]!.record)
+      ? recordBubbles(formatSingleRecord(hits[0]!.record))
       : formatAggregate(hits);
 
   return {
-    text,
+    bubbles,
+    text: bubbles.join('\n\n'),
     sources: sourceChips(records),
     actions: actionsForRecords(records),
     suggestions: pickFollowUps(hits),
