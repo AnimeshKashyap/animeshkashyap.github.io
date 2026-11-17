@@ -1,4 +1,5 @@
 import panelCss from './panel.css?inline';
+import { suggest } from '../engine/suggestions';
 import { runAction, type ActionContext } from '../engine/actions';
 import {
   appendBotMessage,
@@ -28,6 +29,7 @@ type PanelElements = {
   form: HTMLFormElement;
   input: HTMLInputElement;
   send: HTMLButtonElement;
+  hideAutocomplete: () => void;
   handlers: MessageHandlers;
 };
 
@@ -267,6 +269,7 @@ function ensureWelcome(elements: PanelElements): void {
 }
 
 function cancelResponse(elements: PanelElements): void {
+  elements.hideAutocomplete();
   pendingResponse?.abort();
   pendingResponse = undefined;
   if (pendingTyping) pendingTyping.parentNode?.removeChild(pendingTyping);
@@ -286,6 +289,7 @@ async function handleQuery(elements: PanelElements, query: string): Promise<void
   }
 
   busy = true;
+  elements.hideAutocomplete();
   const controller = new AbortController();
   pendingResponse = controller;
   elements.input.disabled = true;
@@ -376,6 +380,67 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   input.autocomplete = 'off';
   input.setAttribute('aria-label', 'Message');
   input.placeholder = 'Ask about experience, skills, projects…';
+  input.setAttribute('role', 'combobox');
+  input.setAttribute('aria-autocomplete', 'list');
+  input.setAttribute('aria-haspopup', 'listbox');
+  input.setAttribute('aria-expanded', 'false');
+  input.setAttribute('aria-controls', 'chat-input-suggestions');
+
+  const list = document.createElement('div');
+  list.id = 'chat-input-suggestions';
+  list.className = 'chat-panel__autocomplete';
+  list.setAttribute('role', 'listbox');
+  list.setAttribute('aria-label', 'Suggested questions');
+  list.hidden = true;
+
+  let focused = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let options: HTMLButtonElement[] = [];
+  let highlighted = -1;
+
+  function highlight(index: number): void {
+    highlighted = index;
+    options.forEach((option, i) => option.setAttribute('aria-selected', String(i === index)));
+    if (options[index]) input.setAttribute('aria-activedescendant', options[index].id);
+    else input.removeAttribute('aria-activedescendant');
+  }
+
+  function hideAutocomplete(): void {
+    clearTimeout(timer);
+    timer = undefined;
+    highlight(-1);
+    options = [];
+    list.replaceChildren();
+    list.hidden = true;
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  function scheduleAutocomplete(): void {
+    hideAutocomplete();
+    if (!focused || busy || !panelVisible || !input.value.trim()) return;
+    timer = setTimeout(() => {
+      timer = undefined;
+      if (!focused || busy || !panelVisible) return;
+      options = suggest(input.value, 3).map((sentence, index) => {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.tabIndex = -1;
+        option.id = `chat-input-suggestion-${index}`;
+        option.className = 'chat-panel__option';
+        option.setAttribute('role', 'option');
+        option.setAttribute('aria-selected', 'false');
+        option.textContent = sentence;
+        // Keep focus on the combobox so blur does not swallow pointer clicks.
+        option.addEventListener('mousedown', (event) => event.preventDefault());
+        option.addEventListener('mouseenter', () => highlight(index));
+        option.addEventListener('click', () => { void handleQuery(elements, sentence); });
+        return option;
+      });
+      list.replaceChildren(...options);
+      list.hidden = options.length === 0;
+      input.setAttribute('aria-expanded', String(options.length > 0));
+    }, 80);
+  }
 
   const send = document.createElement('button');
   send.type = 'submit';
@@ -393,6 +458,7 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
     form,
     input,
     send,
+    hideAutocomplete,
     handlers: {
       onSuggestion: () => {},
       onAction: () => {},
@@ -408,7 +474,7 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
     },
   };
 
-  body.append(log, form);
+  body.append(log, list, form);
   root.append(header, body);
   shadow.appendChild(root);
 
@@ -419,6 +485,34 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
 
   input.addEventListener('input', () => {
     updateSendDisabled(input, send);
+    scheduleAutocomplete();
+  });
+  input.addEventListener('focus', () => {
+    focused = true;
+    scheduleAutocomplete();
+  });
+  input.addEventListener('blur', () => {
+    focused = false;
+    hideAutocomplete();
+  });
+  input.addEventListener('keydown', (event) => {
+    if (event.isComposing || list.hidden) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      highlight(highlighted < 0
+        ? (event.key === 'ArrowDown' ? 0 : options.length - 1)
+        : (highlighted + (event.key === 'ArrowDown' ? 1 : options.length - 1)) % options.length);
+    } else if (highlighted >= 0 && event.key === 'Enter') {
+      event.preventDefault();
+      void handleQuery(elements, options[highlighted].textContent ?? '');
+    } else if (highlighted >= 0 && (event.key === 'Tab' && !event.shiftKey
+      || event.key === 'ArrowRight' && input.selectionStart === input.value.length
+        && input.selectionEnd === input.value.length)) {
+      event.preventDefault();
+      input.value = options[highlighted].textContent ?? '';
+      hideAutocomplete();
+      updateSendDisabled(input, send);
+    }
   });
 
   clearBtn.addEventListener('click', () => {
@@ -433,6 +527,10 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   root.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
+      if (!list.hidden) {
+        hideAutocomplete();
+        return;
+      }
       closePanel(elements);
     }
   });
