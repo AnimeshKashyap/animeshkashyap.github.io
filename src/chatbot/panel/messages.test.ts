@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CHATBOT_CONFIG } from '../config';
+import { CHATBOT_CONFIG, CHATBOT_KEYWORDS } from '../config';
 import {
   appendBotMessage,
   appendUserMessage,
@@ -63,11 +63,24 @@ describe('chat panel messages', () => {
     const suggestionButtons = collectDescendants(log).filter((node) =>
       node.classList.contains('chat-chip--suggestion'),
     );
-    expect(suggestionButtons).toHaveLength(CHATBOT_CONFIG.suggestedQuestions.length);
-    expect(suggestionButtons).toHaveLength(5);
+    expect(suggestionButtons).toHaveLength(CHATBOT_KEYWORDS.length);
+    expect(suggestionButtons.map((button) => button.textContent)).toEqual(CHATBOT_KEYWORDS.map(({ label }) => label));
 
     suggestionButtons[0]!.click();
-    expect(onSuggestion).toHaveBeenCalledWith(CHATBOT_CONFIG.suggestedQuestions[0]);
+    expect(onSuggestion).toHaveBeenCalledWith(CHATBOT_KEYWORDS[0].query);
+  });
+
+  it.each(CHATBOT_KEYWORDS)('maps the $label reply chip to its canonical question', async ({ label, query }) => {
+    const log = createMessageLog();
+    const onSuggestion = vi.fn();
+    await appendBotMessage(log, makeReply({ suggestions: [label] }), {
+      onSuggestion,
+      onAction: vi.fn(),
+    }, { reveal: false });
+    const chip = collectDescendants(log).find((node) => node.classList.contains('chat-chip--suggestion'));
+    expect(chip?.textContent).toBe(label);
+    chip!.click();
+    expect(onSuggestion).toHaveBeenCalledWith(query);
   });
 
   it('renders user text as plain text nodes only', () => {

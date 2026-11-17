@@ -1,4 +1,4 @@
-import { CHATBOT_CONFIG } from '../config';
+import { CHATBOT_CONFIG, CHATBOT_KEYWORDS } from '../config';
 import type { ActionId, KnowledgeRecord, KnowledgeRecordType, Reply } from '../types';
 import type { SearchHit } from './search';
 import { canonicalize, normalize } from './synonyms';
@@ -6,7 +6,7 @@ import { recordBubbles, replyBubbles } from './bubbles';
 
 const MAX_HIGHLIGHTS = 3;
 const LOW_CONFIDENCE_TEXT = "I don't have that in the CV.";
-const FOLLOW_UP_POOL = CHATBOT_CONFIG.suggestedQuestions;
+const FOLLOW_UP_POOL = CHATBOT_KEYWORDS.map(({ label }) => label);
 
 function fieldValue(text: string, label: string): string | undefined {
   const prefix = `${label}: `;
@@ -429,51 +429,37 @@ function actionsForRecords(records: readonly KnowledgeRecord[]): ActionId[] {
   return [];
 }
 
-function pickFollowUps(hits: SearchHit[]): string[] {
-  const suggestions: string[] = [];
-  const records = hits.map((hit) => hit.record);
-  const types = new Set(records.map((record) => record.type));
-
-  if (hits.length === 1 && records[0]?.type === 'experience') {
-    const company = fieldValue(records[0].text, 'Company');
-    if (company !== undefined) {
-      suggestions.push(`What technologies did he use at ${company}?`);
-    }
-  }
-
-  if (types.has('skill') && !types.has('experience')) {
-    suggestions.push('Summarize his work experience.');
-  }
-  if (types.has('experience') && !types.has('project')) {
-    suggestions.push('What projects has he built?');
-  }
-  if (types.has('project') && !types.has('experience')) {
-    suggestions.push('Summarize his work experience.');
-  }
-  if (types.has('education') && types.size === 1) {
-    suggestions.push('Which technologies and skills does he focus on?');
-  }
-
-  for (const question of FOLLOW_UP_POOL) {
-    if (suggestions.length >= 3) {
-      break;
-    }
-    if (!suggestions.includes(question)) {
-      suggestions.push(question);
-    }
-  }
-
-  return suggestions.slice(0, 3);
+function pickFollowUps(hits: SearchHit[], query: string): string[] {
+  const normalizedQuery = query.trim().toLowerCase();
+  const answered = CHATBOT_KEYWORDS.find(
+    ({ label, query: canonical }) =>
+      label.toLowerCase() === normalizedQuery || canonical.toLowerCase() === normalizedQuery,
+  )?.label;
+  const primary = hits[0]?.record;
+  const topic = answered ?? (primary?.type === 'experience' ? 'Experience'
+    : primary?.type === 'skill' ? 'Skills'
+    : primary?.type === 'project' ? 'Projects'
+    : primary?.type === 'education' ? 'Education'
+    : primary?.id === 'profile-summary' ? 'Profile Summary'
+    : primary !== undefined && isContactRecord(primary) ? 'Contact' : undefined);
+  const contextual = topic === 'Experience'
+    ? ['Skills', 'Projects', 'Total Experience']
+    : topic === 'Skills' || topic === 'Projects'
+      ? ['Experience', 'Skills', 'Projects', 'Education']
+      : ['Experience', 'Skills', 'Projects', 'Contact'];
+  return [...new Set([...contextual, ...FOLLOW_UP_POOL])]
+    .filter((label) => label !== topic)
+    .slice(0, 4);
 }
 
-function lowConfidenceReply(): Reply {
+function lowConfidenceReply(query: string): Reply {
   const bubbles = [LOW_CONFIDENCE_TEXT];
   return {
     bubbles,
     text: bubbles.join('\n\n'),
     sources: [],
     actions: ['email'],
-    suggestions: FOLLOW_UP_POOL.slice(0, 3),
+    suggestions: pickFollowUps([], query),
     confident: false,
   };
 }
@@ -544,7 +530,7 @@ function isConfident(hits: SearchHit[], query: string): boolean {
  */
 export function composeReply(hits: SearchHit[], query: string): Reply {
   if (hits.length === 0 || !isConfident(hits, query)) {
-    return lowConfidenceReply();
+    return lowConfidenceReply(query);
   }
 
   const records =
@@ -561,7 +547,7 @@ export function composeReply(hits: SearchHit[], query: string): Reply {
     text: bubbles.join('\n\n'),
     sources: sourceChips(records),
     actions: actionsForRecords(records),
-    suggestions: pickFollowUps(hits),
+    suggestions: pickFollowUps(hits, query),
     confident: true,
   };
 }

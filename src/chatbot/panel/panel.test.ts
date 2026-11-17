@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Reply } from '../types';
 import { mountLauncher } from '../launcher';
-import { CHATBOT_CONFIG } from '../config';
+import { CHATBOT_CONFIG, CHATBOT_KEYWORDS } from '../config';
 import {
   installBrowserGlobals,
   registerElementById,
@@ -105,15 +105,27 @@ describe('chat panel', () => {
     expect(shadow.querySelector('.chat-panel__send')?.disabled).toBe(true);
   });
 
-  it('shows welcome with five suggestions when storage is empty', () => {
+  it('shows welcome with all keyword suggestions when storage is empty', () => {
     const { shadow } = mountHost();
     openPanel();
 
     const suggestions = collectDescendants(getPanel(shadow)).filter((node) =>
       node.classList.contains('chat-chip--suggestion'),
     );
-    expect(suggestions).toHaveLength(5);
-    expect(suggestions.map((node) => node.textContent)).toEqual(CHATBOT_CONFIG.suggestedQuestions);
+    expect(suggestions).toHaveLength(8);
+    expect(suggestions.map((node) => node.textContent)).toEqual(CHATBOT_KEYWORDS.map(({ label }) => label));
+  });
+
+  it.each(CHATBOT_KEYWORDS)('sends the canonical question for $label and displays it in the user bubble', async ({ label, query }) => {
+    const { shadow } = mountHost();
+    openPanel();
+    const chip = collectDescendants(getPanel(shadow)).find((node) =>
+      node.classList.contains('chat-chip--suggestion') && node.textContent === label,
+    );
+    chip!.click();
+    expect(getPanel(shadow).querySelector('.chat-msg--user')?.textContent).toBe(query);
+    await vi.waitFor(() => expect(engineBehavior.ask).toHaveBeenCalledWith(query));
+    await vi.waitFor(() => expect(shadow.querySelector('.chat-panel__typing')).toBeNull());
   });
 
   it('disables send for whitespace-only input', async () => {
@@ -257,6 +269,25 @@ describe('chat panel', () => {
     expect(getPanel(shadow).querySelector('.chat-msg__bubble--reveal')).toBeNull();
   });
 
+  it('restores and sends legacy sentence suggestions unchanged', async () => {
+    const sentence = 'Tell me about his work experience.';
+    const reply: Partial<Reply> = makeReply({ suggestions: [sentence] });
+    delete reply.bubbles;
+    browser.sessionData.set(HISTORY_KEY, JSON.stringify([{ kind: 'bot', reply }]));
+    const { shadow } = mountHost();
+    openPanel();
+
+    const panel = getPanel(shadow);
+    const chips = panel.querySelectorAll('.chat-chip--suggestion');
+    expect(chips.map((chip) => chip.textContent)).toEqual([sentence]);
+    expect(engineBehavior.ask).not.toHaveBeenCalled();
+    chips[0].click();
+    expect(panel.querySelector('.chat-msg--user')?.textContent).toBe(sentence);
+    await vi.waitFor(() => expect(engineBehavior.ask).toHaveBeenCalledWith(sentence));
+    await vi.waitFor(() => expect(shadow.querySelector('.chat-panel__typing')).toBeNull());
+    expect(browser.sessionData.get(HISTORY_KEY)).toContain(sentence);
+  });
+
   it('returns empty history when sessionStorage read throws', async () => {
     browser.sessionData.set(HISTORY_KEY, JSON.stringify([{ kind: 'user', text: 'hidden' }]));
     const originalGetItem = sessionStorage.getItem.bind(sessionStorage);
@@ -269,7 +300,7 @@ describe('chat panel', () => {
 
     await vi.waitFor(() => {
       expect(collectDescendants(getPanel(shadow)).filter((n) => n.classList.contains('chat-chip--suggestion')))
-        .toHaveLength(5);
+        .toHaveLength(8);
     });
     expect(getPanel(shadow).textContent).not.toContain('hidden');
 
@@ -285,7 +316,7 @@ describe('chat panel', () => {
     await vi.waitFor(() => {
       expect(browser.sessionData.has(HISTORY_KEY)).toBe(false);
       expect(collectDescendants(getPanel(shadow)).filter((n) => n.classList.contains('chat-chip--suggestion')))
-        .toHaveLength(5);
+        .toHaveLength(8);
     });
   });
 
@@ -307,7 +338,7 @@ describe('chat panel', () => {
       expect(browser.sessionData.has(HISTORY_KEY)).toBe(false);
     });
     expect(collectDescendants(getPanel(shadow)).filter((n) => n.classList.contains('chat-chip--suggestion')))
-      .toHaveLength(5);
+      .toHaveLength(8);
   });
 
   it('reset after in-session messages clears storage and restores welcome', async () => {
@@ -339,7 +370,7 @@ describe('chat panel', () => {
     expect(getPanel(shadow).querySelectorAll('.chat-msg--user')).toHaveLength(0);
     expect(
       collectDescendants(getPanel(shadow)).filter((n) => n.classList.contains('chat-chip--suggestion')),
-    ).toHaveLength(5);
+    ).toHaveLength(8);
   });
 
   it('clears conversation, storage, and restores welcome', async () => {
@@ -360,7 +391,7 @@ describe('chat panel', () => {
     expect(browser.sessionData.has(HISTORY_KEY)).toBe(false);
     expect(getPanel(shadow).textContent).not.toContain('Old message');
     expect(collectDescendants(getPanel(shadow)).filter((n) => n.classList.contains('chat-chip--suggestion')))
-      .toHaveLength(5);
+      .toHaveLength(8);
   });
 
   it.each(['reset', 'close', 'Escape'])('cancels late engine replies on %s', async (control) => {

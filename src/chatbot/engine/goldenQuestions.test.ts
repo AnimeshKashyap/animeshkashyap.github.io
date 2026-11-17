@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CHATBOT_CONFIG } from '../config';
+import { CHATBOT_KEYWORDS } from '../config';
 import { getRecords } from '../knowledge';
 import type { ActionId, KnowledgeRecord, KnowledgeRecordType } from '../types';
 import { createEngine } from './engine';
@@ -340,13 +340,29 @@ describe('golden visitor questions', () => {
     }
   });
 
+  it.each(CHATBOT_KEYWORDS)('$label resolves confidently without suggesting itself', async ({ label, query }) => {
+    const reply = await engine.ask(query);
+    expect(reply.confident).toBe(true);
+    expect(reply.suggestions.length).toBeLessThanOrEqual(4);
+    expect(reply.suggestions).not.toContain(label);
+    expect(new Set(reply.suggestions).size).toBe(reply.suggestions.length);
+    for (const suggestion of reply.suggestions) {
+      expect(CHATBOT_KEYWORDS.map((keyword) => keyword.label)).toContain(suggestion);
+    }
+  });
+
+  it('offers related keywords after Experience', async () => {
+    const reply = await engine.ask('Summarize his work experience.');
+    expect(reply.suggestions.slice(0, 3)).toEqual(['Skills', 'Projects', 'Total Experience']);
+  });
+
   it('suggested follow-ups on confident replies come from the configured pool', async () => {
     const reply = await engine.ask('Which technologies and skills does he focus on?');
     expect(reply.confident).toBe(true);
     expect(reply.suggestions.length).toBeGreaterThan(0);
-    expect(reply.suggestions.length).toBeLessThanOrEqual(3);
+    expect(reply.suggestions.length).toBeLessThanOrEqual(4);
     for (const suggestion of reply.suggestions) {
-      expect(CHATBOT_CONFIG.suggestedQuestions).toContain(suggestion);
+      expect(CHATBOT_KEYWORDS.map(({ label }) => label)).toContain(suggestion);
     }
   });
 

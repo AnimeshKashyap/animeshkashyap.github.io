@@ -46,7 +46,9 @@ Edit `config.ts`:
 - **`launcherSide`** — `'left'` (default) or `'right'`; mirrored onto the shadow host's `data-side`. Launcher, centered closed dock, desktop panel, and current greeting share this anchor with `max(16px, safe-area inset)` offsets. Vertical dock labels open inward; horizontal labels wrap above the row, anchored to its outer edge. Movement uses transforms, with reduced-motion overrides.
 
 - **`CHATBOT_RETRIEVAL_THRESHOLD`** and **`CHATBOT_CONFIG.retrievalThreshold`** — minimum top-hit score (0–1) before compose returns “I don't have that in the CV.” (used in `compose.ts`).
-- **`greeting`**, **`launcherBubbleText`**, **`suggestedQuestions`** — panel copy and follow-ups.
+- **`greeting`**, **`launcherBubbleText`** — panel and launcher copy.
+- **`CHATBOT_KEYWORDS`** — typed `{ label, query }` pairs for Experience, Total Experience, Skills, Profile Summary, Projects, Education, Contact, and Download Resume. The welcome shows every label; reply follow-ups select at most four contextual labels and exclude the answered topic. Clicking sends the canonical full question, also displayed in the user bubble. Keep each query confidently answerable; `config.test.ts` checks every configured keyword.
+- **`suggestedQuestions`** — default keyword labels for intent replies, derived from the first four keywords. Older stored sentence suggestions still render and send their original text unchanged.
 - **`actions`** — one entry per `ActionId` (`cv`, `email`, `linkedin`, `github`, `projects`): `label`, `kind` (`open` \| `download` \| `mailto` \| `scroll`), `url`. CV/email/LinkedIn/GitHub pull from `src/data/profile.ts` where applicable.
 
 ## Add a synonym
