@@ -55,6 +55,18 @@ Edit `config.ts`:
 
 Add a `key → canonical token` entry to `SYNONYMS` in `engine/synonyms.ts`. Multi-word keys are supported; category-style aliases (e.g. `work` → `experience`) are query-only and listed in `QUERY_ONLY_ALIASES` — do not rewrite index text for those. Tag tokens that should roll up under AWS queries can be added to `AWS_TERMS` in the same file.
 
+## Autocomplete
+
+`engine/suggestions.ts` exports `suggest(prefix, limit = 3)` without loading MiniSearch or the answer engine. The panel imports it only after the launcher opens; the full engine is separately lazy-loaded on panel open. No network or LLM is involved.
+
+- The corpus is generated from runtime CV records: canonical `CHATBOT_KEYWORDS`, social links, available companies, projects, and skill groups. Change those records/keywords to change completions; unavailable records are excluded. Aliases use `engine/synonyms.ts`.
+- Matching lowercases and removes accents/punctuation, requires at least two non-space normalized characters, and ranks sentence prefixes before all-token word-start matches before synonyms. Ties preserve corpus order; results are deduplicated, exclude the exact normalized input, and return `[]` for no match. Limits are floored and capped at three; nonpositive/NaN limits return `[]`.
+- The focused, nonempty input shows up to three sentence buttons above the form after an 80ms debounce (`scheduleAutocomplete` in `panel.ts`). Input changes cancel stale matches/selection. Blur, sending, no match, reset/close, and the entire request/reply-playback busy period hide the list.
+- ArrowUp/Down wrap selection; hover selects. Enter sends the highlighted sentence (otherwise normal form submission sends typed text); click sends directly. Tab or Right at the collapsed end caret fills a highlighted sentence without sending. Shift-Tab, Right within/over selected text, and composing keys do not accept it. Escape dismisses the list first, then closes the panel.
+- ARIA uses combobox/listbox/option roles, controls/expanded, active descendant and selected state. Options stay out of the tab order; mousedown preserves input focus. Theme-token styles bound list height and wrap long sentences for narrow layouts; content uses DOM/text nodes, never `innerHTML`.
+
+Fake-timer/mock-DOM tests cover matching, limits, normalization, corpus grounding, debounce, keyboard/mouse selection, ARIA cleanup and suppression throughout staged playback. CSS assertions are static checks, not browser/layout verification.
+
 ## Tests
 
 From the repo root:

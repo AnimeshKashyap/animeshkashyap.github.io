@@ -92,6 +92,212 @@ describe('chat panel', () => {
     vi.useRealTimers();
   });
 
+  async function autocomplete(prefix = 'what') {
+    // Keep window's bound timer functions on the same clock as global timers.
+    if (!vi.isFakeTimers()) vi.useFakeTimers();
+    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
+    const { shadow } = mountHost();
+    openPanel();
+    const input = shadow.querySelector('.chat-panel__input')!;
+    const list = shadow.querySelector('.chat-panel__autocomplete')!;
+    input.dispatchEvent('focus');
+    input.value = prefix;
+    input.dispatchEvent('input');
+    expect(list.hidden).toBe(true);
+    await vi.advanceTimersByTimeAsync(79);
+    expect(list.hidden).toBe(true);
+    await vi.advanceTimersByTimeAsync(1);
+    return { shadow, input, list };
+  }
+
+  it('debounces up to three accessible options directly above the form, separate from chips', async () => {
+    const { shadow, input, list } = await autocomplete();
+    expect(input.getAttribute('role')).toBe('combobox');
+    expect(input.getAttribute('aria-controls')).toBe(list.id);
+    expect(input.getAttribute('aria-expanded')).toBe('true');
+    expect(list.getAttribute('role')).toBe('listbox');
+    expect(list.children).toHaveLength(3);
+    expect(list.children.every((option) => option.getAttribute('role') === 'option')).toBe(true);
+    const body = shadow.querySelector('.chat-panel__body')!;
+    expect(body.children.indexOf(list) + 1).toBe(body.children.indexOf(shadow.querySelector('.chat-panel__form')!));
+    expect(list.querySelector('.chat-chip')).toBeNull();
+  });
+
+  it.each(['Tab', 'ArrowRight'])('fills a highlighted sentence without sending on %s', async (key) => {
+    const { input, list } = await autocomplete();
+    const nativeInput = input as unknown as HTMLInputElement;
+    nativeInput.selectionStart = input.value.length;
+    nativeInput.selectionEnd = input.value.length;
+    input.dispatchEvent('keydown', { key: 'ArrowDown' });
+    const sentence = list.children[0].textContent;
+    expect(input.getAttribute('aria-activedescendant')).toBe(list.children[0].id);
+    expect(list.children[0].getAttribute('aria-selected')).toBe('true');
+    input.dispatchEvent('keydown', { key });
+    expect(input.value).toBe(sentence);
+    expect(list.hidden).toBe(true);
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+    expect(engineBehavior.ask).not.toHaveBeenCalled();
+  });
+
+  it.each(['Enter', 'click'])('sends highlighted autocomplete via %s and hides immediately', async (method) => {
+    const { input, list } = await autocomplete();
+    input.dispatchEvent('keydown', { key: 'ArrowUp' });
+    const option = list.children[2];
+    option.dispatchEvent('mouseenter');
+    const sentence = option.textContent;
+    if (method === 'click') option.click();
+    else input.dispatchEvent('keydown', { key: 'Enter' });
+    expect(list.hidden).toBe(true);
+    expect(input.value).toBe('');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(engineBehavior.ask).toHaveBeenCalledWith(sentence);
+  });
+
+  it('keeps typed submit behavior without a highlight', async () => {
+    const { shadow, list } = await autocomplete();
+    shadow.querySelector('.chat-panel__form')!.dispatchEvent('submit');
+    expect(list.hidden).toBe(true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(engineBehavior.ask).toHaveBeenCalledWith('what');
+  });
+
+  it('hides on blur, cancels pending matches, and suppresses no matches', async () => {
+    const { input, list } = await autocomplete();
+    input.dispatchEvent('blur');
+    expect(list.hidden).toBe(true);
+    input.dispatchEvent('input');
+    await vi.advanceTimersByTimeAsync(80);
+    expect(list.hidden).toBe(true);
+    input.dispatchEvent('focus');
+    input.dispatchEvent('blur');
+    await vi.advanceTimersByTimeAsync(80);
+    expect(list.hidden).toBe(true);
+    input.value = 'zzzzzzzz';
+    input.dispatchEvent('focus');
+    await vi.advanceTimersByTimeAsync(80);
+    expect(list.hidden).toBe(true);
+    expect(input.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('dismisses the list before closing the panel on Escape', async () => {
+    const { shadow, list } = await autocomplete();
+    const panel = getPanel(shadow);
+    panel.dispatchEvent('keydown', { key: 'Escape' });
+    expect(list.hidden).toBe(true);
+    expect(isPanelOpen()).toBe(true);
+    panel.dispatchEvent('keydown', { key: 'Escape' });
+    expect(isPanelOpen()).toBe(false);
+  });
+
+  it('does not fill on Right in the middle of text or show matches while busy', async () => {
+    const { shadow, input, list } = await autocomplete();
+    const nativeInput = input as unknown as HTMLInputElement;
+    nativeInput.selectionStart = 1;
+    nativeInput.selectionEnd = 1;
+    input.dispatchEvent('keydown', { key: 'ArrowDown' });
+    input.dispatchEvent('keydown', { key: 'ArrowRight' });
+    expect(input.value).toBe('what');
+    expect(list.hidden).toBe(false);
+    engineBehavior.ask.mockImplementation(() => new Promise<Reply>(() => {}));
+    shadow.querySelector('.chat-panel__form')!.dispatchEvent('submit');
+    input.value = 'what';
+    input.dispatchEvent('input');
+    await vi.advanceTimersByTimeAsync(80);
+    expect(list.hidden).toBe(true);
+    expect(input.getAttribute('aria-expanded')).toBe('false');
+    getResetHeaderButton(getPanel(shadow)).click();
+  });
+
+  it('wraps keyboard selection and transfers ARIA selection on hover', async () => {
+    const { input, list } = await autocomplete();
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+    for (const [key, index] of [
+      ['ArrowUp', 2], ['ArrowDown', 0], ['ArrowDown', 1], ['ArrowUp', 0], ['ArrowUp', 2],
+    ] as const) {
+      input.dispatchEvent('keydown', { key });
+      expect(input.getAttribute('aria-activedescendant')).toBe(list.children[index].id);
+      expect(list.children.map((option) => option.getAttribute('aria-selected')))
+        .toEqual(list.children.map((_, position) => String(position === index)));
+    }
+    list.children[1].dispatchEvent('mouseenter');
+    expect(input.getAttribute('aria-activedescendant')).toBe(list.children[1].id);
+    expect(list.children[2].getAttribute('aria-selected')).toBe('false');
+    expect(engineBehavior.ask).not.toHaveBeenCalled();
+  });
+
+  it('restarts debounce for new text and clears stale selection for short or empty input', async () => {
+    const { input, list } = await autocomplete();
+    input.dispatchEvent('keydown', { key: 'ArrowDown' });
+    input.value = 'college';
+    input.dispatchEvent('input');
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+    await vi.advanceTimersByTimeAsync(79);
+    input.value = 'resume';
+    input.dispatchEvent('input');
+    await vi.advanceTimersByTimeAsync(79);
+    expect(list.hidden).toBe(true);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(list.children.map((option) => option.textContent)).toEqual(['How can I download his resume?']);
+    for (const value of ['a', '', '   ']) {
+      input.value = value;
+      input.dispatchEvent('input');
+      await vi.advanceTimersByTimeAsync(80);
+      expect(list.hidden).toBe(true);
+      expect(list.children).toHaveLength(0);
+      expect(input.getAttribute('aria-expanded')).toBe('false');
+    }
+  });
+
+  it('does not complete on Shift-Tab, composing keys, or Right with a text selection', async () => {
+    const { input, list } = await autocomplete();
+    input.dispatchEvent('keydown', { key: 'ArrowDown', isComposing: true });
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+    input.dispatchEvent('keydown', { key: 'ArrowDown' });
+    input.dispatchEvent('keydown', { key: 'Tab', shiftKey: true });
+    const nativeInput = input as unknown as HTMLInputElement;
+    nativeInput.selectionStart = 0;
+    nativeInput.selectionEnd = input.value.length;
+    input.dispatchEvent('keydown', { key: 'ArrowRight' });
+    input.dispatchEvent('keydown', { key: 'Enter', isComposing: true });
+    expect(input.value).toBe('what');
+    expect(list.hidden).toBe(false);
+    expect(engineBehavior.ask).not.toHaveBeenCalled();
+  });
+
+  it('keeps autocomplete hidden throughout resolved reply playback, then restores on focus', async () => {
+    vi.useFakeTimers();
+    browser.reset();
+    browser = installBrowserGlobals();
+    browser.setReducedMotion(false);
+    engineBehavior.ask.mockResolvedValue(makeReply({ bubbles: ['First', 'Second'] }));
+    const { shadow, input, list } = await autocomplete();
+    shadow.querySelector('.chat-panel__form')!.dispatchEvent('submit');
+    await vi.advanceTimersByTimeAsync(0);
+    for (let stage = 0; stage < 4; stage++) {
+      expect(input.disabled).toBe(true);
+      input.value = 'what';
+      input.dispatchEvent('focus');
+      input.dispatchEvent('input');
+      await vi.advanceTimersByTimeAsync(80);
+      expect(list.hidden).toBe(true);
+      expect(input.getAttribute('aria-expanded')).toBe('false');
+      expect(input.getAttribute('aria-activedescendant')).toBeNull();
+      await vi.advanceTimersByTimeAsync(20);
+    }
+    await vi.runAllTimersAsync();
+    expect(input.disabled).toBe(false);
+    input.dispatchEvent('focus');
+    await vi.advanceTimersByTimeAsync(80);
+    expect(list.hidden).toBe(false);
+  });
+
+  it('uses bounded, wrapping theme-token styles and no HTML injection for autocomplete', () => {
+    expect(panelCss).toMatch(/\.chat-panel__autocomplete\s*\{[^}]*max-height:\s*min\(180px, 30dvh\)/s);
+    expect(panelCss).toMatch(/\.chat-panel__option\s*\{[^}]*overflow-wrap:\s*anywhere/s);
+    expect(panelCss).toMatch(/\.chat-panel__option\s*\{[^}]*var\(--text-primary/s);
+    expect(panelSource).not.toMatch(/\.innerHTML\s*=/);
+  });
+
   it('opens the panel and syncs launcher aria-expanded', () => {
     const { launcher, shadow } = mountHost();
     launcher.focus();
