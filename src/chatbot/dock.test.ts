@@ -29,6 +29,26 @@ describe('quick action dock', () => {
     expect(runAction).toHaveBeenCalledTimes(5);
   });
 
+  it('keeps action IDs and page context separate for rapid clicks across docks', async () => {
+    const main = createDock('main') as unknown as MockElement;
+    const v4 = createDock('v4') as unknown as MockElement;
+    const mainButtons = main.querySelectorAll('.quick-dock__button');
+    const v4Buttons = v4.querySelectorAll('.quick-dock__button');
+
+    mainButtons[4]!.click();
+    v4Buttons[0]!.click();
+    mainButtons[4]!.click();
+    v4Buttons[4]!.click();
+
+    await vi.waitFor(() => expect(runAction).toHaveBeenCalledTimes(4));
+    expect(vi.mocked(runAction).mock.calls).toEqual([
+      ['projects', { page: 'main' }],
+      ['cv', { page: 'v4' }],
+      ['projects', { page: 'main' }],
+      ['projects', { page: 'v4' }],
+    ]);
+  });
+
   it('places closed labels inward without crossing the icon or safe edges', () => {
     expect(dockStyles).toContain('left: var(--tip-left); right: var(--tip-right); top: 50%');
     expect(dockStyles).toContain('transform: translateY(-50%)');
