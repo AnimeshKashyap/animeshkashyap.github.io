@@ -269,6 +269,25 @@ describe('chat panel', () => {
     expect(getPanel(shadow).querySelector('.chat-msg__bubble--reveal')).toBeNull();
   });
 
+  it('restores and sends legacy sentence suggestions unchanged', async () => {
+    const sentence = 'Tell me about his work experience.';
+    const reply: Partial<Reply> = makeReply({ suggestions: [sentence] });
+    delete reply.bubbles;
+    browser.sessionData.set(HISTORY_KEY, JSON.stringify([{ kind: 'bot', reply }]));
+    const { shadow } = mountHost();
+    openPanel();
+
+    const panel = getPanel(shadow);
+    const chips = panel.querySelectorAll('.chat-chip--suggestion');
+    expect(chips.map((chip) => chip.textContent)).toEqual([sentence]);
+    expect(engineBehavior.ask).not.toHaveBeenCalled();
+    chips[0].click();
+    expect(panel.querySelector('.chat-msg--user')?.textContent).toBe(sentence);
+    await vi.waitFor(() => expect(engineBehavior.ask).toHaveBeenCalledWith(sentence));
+    await vi.waitFor(() => expect(shadow.querySelector('.chat-panel__typing')).toBeNull());
+    expect(browser.sessionData.get(HISTORY_KEY)).toContain(sentence);
+  });
+
   it('returns empty history when sessionStorage read throws', async () => {
     browser.sessionData.set(HISTORY_KEY, JSON.stringify([{ kind: 'user', text: 'hidden' }]));
     const originalGetItem = sessionStorage.getItem.bind(sessionStorage);
