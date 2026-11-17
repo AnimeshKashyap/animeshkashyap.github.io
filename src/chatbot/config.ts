@@ -20,6 +20,17 @@ function profileLinkUrl(label: string): string {
 /** Minimum retrieval score for returning knowledge-backed answers. */
 export const CHATBOT_RETRIEVAL_THRESHOLD = 0.35;
 
+export const CHATBOT_KEYWORDS: { label: string; query: string }[] = [
+  { label: 'Experience', query: 'Summarize his work experience.' },
+  { label: 'Total Experience', query: 'How many years of experience does he have?' },
+  { label: 'Skills', query: 'Which technologies and skills does he focus on?' },
+  { label: 'Profile Summary', query: "What is Animesh's professional background?" },
+  { label: 'Projects', query: 'What projects has he built?' },
+  { label: 'Education', query: 'What is his education?' },
+  { label: 'Contact', query: 'How can I contact him?' },
+  { label: 'Download Resume', query: 'How can I download his resume?' },
+];
+
 export const CHATBOT_CONFIG = {
   launcherSide: 'left' as 'left' | 'right',
   greeting:
