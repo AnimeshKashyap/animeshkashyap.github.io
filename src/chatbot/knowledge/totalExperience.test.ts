@@ -17,6 +17,10 @@ describe('total-experience knowledge', () => {
     ['2019-05-01', '1 year 1 month'],
     ['2018-05-01', '1 month'],
     ['2018-06-01', '2 months'],
+    ['2018-12-31', '8 months'],
+    ['2019-01-01', '9 months'],
+    ['2019-03-31', '11 months'],
+    ['2019-04-01', '1 year'],
     ['2018-04-01', '0 months'],
     ['2017-04-01', '0 months'],
   ])('formats the month-granular duration at %s', (date, duration) => {
@@ -53,6 +57,22 @@ describe('total-experience knowledge', () => {
     vi.spyOn(profile, 'summary', 'get').mockReturnValue('Software engineer.');
     vi.spyOn(skillGroups, 'flatMap').mockReturnValue(['Pythonic', 'ReactXjs', 'AWSome', 'Design Patterns']);
     expect(faq().text).toBe(`${profile.name} has 8 years 7 months of experience.`);
+  });
+
+  it('omits unsupported individual skills while retaining supported claims', () => {
+    vi.spyOn(skillGroups, 'flatMap').mockReturnValue(['Python', 'System Design', 'NodeXjs']);
+    vi.spyOn(profile, 'summary', 'get').mockReturnValue('Experience with AWS.');
+    expect(faq().text).toBe(`${profile.name} has 8 years 7 months of experience across Python, AWS, architecture design.`);
+  });
+
+  it('uses the current date when no date is injected', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2027-04-01T12:00:00Z'));
+      expect(buildRecords().find((record) => record.id === 'faq-total-experience')!.text).toContain('9 years of experience');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('can derive technologies from profile alone and omit unsupported architecture', () => {
