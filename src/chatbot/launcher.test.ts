@@ -1,7 +1,11 @@
+/// <reference types="node" />
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CHATBOT_CONFIG } from './config';
 import { buildLauncherStyles, mountLauncher } from './launcher';
 import { togglePanel } from './panel/panel';
+const panelStyles = readFileSync(fileURLToPath(new URL('./panel/panel.css', import.meta.url)), 'utf8');
 import {
   installBrowserGlobals,
   type BrowserGlobalsHandle,
@@ -36,6 +40,30 @@ function getBubble(shadow: MockShadowRoot): MockElement | null {
 }
 
 describe('buildLauncherStyles', () => {
+  it('shares panel and greeting anchors and keeps launcher labels inward at safe edges', () => {
+    expect(CHATBOT_CONFIG.launcherSide).toBe('left');
+    const styles = buildLauncherStyles('main');
+    expect(panelStyles).toContain('left: var(--side-left)');
+    expect(panelStyles).toContain('right: var(--side-right)');
+    expect(styles).toContain('align-items: var(--side-align)');
+    expect(styles).toContain('--tip-origin: 100%');
+    expect(styles).toContain('--tip-left: calc(100% + 8px)');
+    expect(styles).toContain('--tip-right: calc(100% + 8px)');
+    expect(styles).toContain('100vw - var(--side-offset) - var(--opposite-offset) - 64px');
+    expect(styles).not.toContain('scale('); // scaling a launcher would also scale its viewport-sized tooltip
+    for (const side of ['left', 'right']) {
+      for (const [viewport, safeLeft, safeRight] of [[320, 0, 0], [320, 40, 24], [768, 24, 100]] as const) {
+        const left = Math.max(16, safeLeft);
+        const right = Math.max(16, safeRight);
+        const iconLeft = side === 'left' ? left : viewport - right - 56;
+        const labelWidth = Math.min(2000, viewport - left - right - 64);
+        const labelLeft = side === 'left' ? iconLeft + 64 : iconLeft - 8 - labelWidth;
+        expect(labelLeft).toBeGreaterThanOrEqual(left);
+        expect(labelLeft + labelWidth).toBeLessThanOrEqual(viewport - right);
+        expect(side === 'left' ? labelLeft - iconLeft - 56 : iconLeft - labelLeft - labelWidth).toBe(8);
+      }
+    }
+  });
   it('main page :host does not pin dark theme tokens so site tokens can inherit', () => {
     const styles = buildLauncherStyles('main');
     const hostBlock = styles.slice(0, styles.indexOf('.launcher-wrap'));
@@ -63,7 +91,7 @@ describe('buildLauncherStyles', () => {
 
     expect(styles).toContain('var(--shadow-card,');
     expect(styles).toContain('var(--radius-md,');
-    expect(styles).toContain('calc(100vw - 32px');
+    expect(styles).toContain('calc(100vw - var(--side-offset) - var(--opposite-offset))');
     expect(styles).toContain('env(safe-area-inset-left');
     expect(styles).toContain('env(safe-area-inset-right');
   });
@@ -88,6 +116,21 @@ describe('mountLauncher greeting bubble', () => {
   afterEach(() => {
     browser.reset();
     vi.useRealTimers();
+  });
+
+  it.each(['left', 'right'] as const)('mirrors configured %s side onto the shadow host', (side) => {
+    const original = CHATBOT_CONFIG.launcherSide;
+    try {
+      CHATBOT_CONFIG.launcherSide = side;
+      const { host } = mountLauncherOnPage('main');
+      expect(host.getAttribute('data-side')).toBe(side);
+      const styles = buildLauncherStyles('main');
+      expect(styles).toContain(':host([data-side=right])');
+      expect(styles).toContain('align-items: var(--side-align)');
+      expect(styles).toContain('--side-align: flex-end');
+    } finally {
+      CHATBOT_CONFIG.launcherSide = original;
+    }
   });
 
   it('does not mount a bubble when the session flag is already set', () => {

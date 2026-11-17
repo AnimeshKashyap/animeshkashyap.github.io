@@ -29,46 +29,60 @@ describe('quick action dock', () => {
     expect(runAction).toHaveBeenCalledTimes(5);
   });
 
-  it('places closed labels on the right without crossing the icon or safe edges', () => {
-    expect(dockStyles).toContain('left: calc(100% + 8px); right: auto; top: 50%');
+  it('places closed labels inward without crossing the icon or safe edges', () => {
+    expect(dockStyles).toContain('left: var(--tip-left); right: var(--tip-right); top: 50%');
     expect(dockStyles).toContain('transform: translateY(-50%)');
     expect(dockStyles).toContain('box-sizing: border-box; width: max-content');
-    expect(dockStyles).toContain('max-width: max(0px, calc(100vw - max(16px, env(safe-area-inset-left, 0px)) - 64px - env(safe-area-inset-right, 0px)))');
+    expect(dockStyles).toContain('100vw - var(--side-offset) - var(--opposite-offset) - 56px');
     expect(dockStyles).toContain('overflow-wrap: anywhere');
-    // Model the CSS border boxes: the closed icon is offset 16px from the launcher.
-    for (const [viewport, safeLeft, safeRight, labelWidth] of [
-      [320, 0, 0, 150], [320, 40, 24, 500], [768, 100, 32, 1000], [240, 16, 20, 80],
-    ]) {
-      const iconLeft = Math.max(16, safeLeft!) + 16;
-      const iconRight = iconLeft + 40;
-      const labelLeft = iconRight + 8;
-      const labelRight = labelLeft + Math.min(labelWidth!, Math.max(0, viewport! - Math.max(16, safeLeft!) - 64 - safeRight!));
-      expect(iconLeft - 8 - safeLeft!).toBeLessThanOrEqual(24); // too little room for normal labels
-      expect(labelLeft).toBeGreaterThan(iconRight);
-      expect(labelRight).toBeLessThanOrEqual(viewport! - safeRight!);
+    for (const side of ['left', 'right']) {
+      for (const [viewport, safeLeft, safeRight, naturalWidth] of [
+        [320, 0, 0, 150], [320, 40, 24, 500], [768, 100, 32, 1000], [1280, 24, 90, 2000],
+      ] as const) {
+        const left = Math.max(16, safeLeft);
+        const right = Math.max(16, safeRight);
+        const edge = side === 'left' ? left : viewport - right;
+        const iconLeft = side === 'left' ? edge + 8 : edge - 48;
+        expect(iconLeft + 20).toBe(side === 'left' ? edge + 28 : edge - 28);
+        const width = Math.min(naturalWidth, viewport - left - right - 56);
+        const labelLeft = side === 'left' ? iconLeft + 48 : iconLeft - 8 - width;
+        expect(labelLeft).toBeGreaterThanOrEqual(left);
+        expect(labelLeft + width).toBeLessThanOrEqual(viewport - right);
+        expect(side === 'left' ? labelLeft - iconLeft - 40 : iconLeft - labelLeft - width).toBe(8);
+        for (let index = 0; index < 5; index++) {
+          const sign = side === 'left' ? 1 : -1;
+          const rowIcon = side === 'left' ? edge + index * 46 : edge - 40 - index * 46;
+          const rowWidth = Math.min(naturalWidth, viewport - left - right);
+          const rowLeft = rowIcon + (side === 'right' ? 40 : 0) - sign * index * 46 - (side === 'right' ? rowWidth : 0);
+          expect(rowLeft).toBeGreaterThanOrEqual(left);
+          expect(rowLeft + rowWidth).toBeLessThanOrEqual(viewport - right);
+          // Above placement separates even multi-line labels from their own icon.
+          const iconTop = 100;
+          expect(iconTop - 8).toBeLessThan(iconTop);
+        }
+      }
     }
-    expect(dockStyles).toContain('left: 50%; right: auto; top: auto; bottom: calc(100% + 8px)');
+    expect(dockStyles).toContain('var(--tip-origin) - var(--side-sign) * var(--index) * 46px');
+    expect(dockStyles).toContain('top: auto; bottom: calc(100% + 8px)');
     expect(dockStyles).toContain(':focus-visible::after');
   });
 
-  it('right-aligns the closed buttons with the 56px launcher', () => {
-    expect(dockStyles).toContain('left: calc(max(16px, env(safe-area-inset-left, 0px)) + 16px)');
+  it('centers the closed buttons with the 56px launcher', () => {
+    expect(dockStyles).toContain('left: var(--side-left); right: var(--side-right)');
     expect(dockStyles).toContain('width: 40px; height: 40px');
-    expect(16 + 40).toBe(56);
+    expect(8 + 40 + 8).toBe(56);
   });
 
   it('moves the dock and buttons with transforms and honors reduced motion', () => {
     expect(dockStyles).toContain('.launcher[aria-expanded="true"] ~ .quick-dock');
-    expect(dockStyles).toContain('transform: translate(var(--dock-x, 0px), var(--dock-y, 0px))');
+    expect(dockStyles).toContain('transform: translate(calc(var(--side-sign) * var(--dock-x, 8px)), var(--dock-y, 0px))');
     expect(dockStyles).toContain('transition: transform 240ms ease');
     expect(dockStyles).not.toMatch(/transition:\s*[^;]*(?:left|bottom)/);
     expect(dockStyles).toContain('translateY(calc(var(--index) * -46px))');
-    expect(dockStyles).toContain('translateX(calc(var(--index) * 46px))');
+    expect(dockStyles).toContain('translateX(calc(var(--side-sign) * var(--index) * 46px))');
     expect(dockStyles).toContain('@media (prefers-reduced-motion: reduce)');
     expect(dockStyles).toContain('.quick-dock, .quick-dock__button { transition: none; }');
-    expect(dockStyles).toContain('@media (min-width: 480px) and (max-height: 750px)');
-    expect(dockStyles).toContain('top: calc(100% + 8px); bottom: auto');
-    expect(dockStyles).toContain('@media (max-width: 223px)');
-    expect(dockStyles).toContain('.quick-dock__button:last-child::after { left: auto; right: 0;');
+    expect(dockStyles).not.toContain('top: calc(100% + 8px); bottom: auto');
+    expect(dockStyles).toContain('.quick-dock__button::after { transition: none; }');
   });
 });

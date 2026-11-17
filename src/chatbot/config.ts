@@ -21,6 +21,7 @@ function profileLinkUrl(label: string): string {
 export const CHATBOT_RETRIEVAL_THRESHOLD = 0.35;
 
 export const CHATBOT_CONFIG = {
+  launcherSide: 'left' as 'left' | 'right',
   greeting:
     "Hi — I'm the portfolio assistant for Animesh Kashyap. Ask about his experience, skills, projects, education, or how to get in touch.",
   /** Short copy for the once-per-session bubble beside the launcher button. */

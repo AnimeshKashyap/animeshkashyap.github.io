@@ -517,14 +517,14 @@
 
 @media (min-width: 480px) {
   .chat-panel {
-    left: max(16px, env(safe-area-inset-left, 0px));
-    right: auto;
+    left: var(--side-left);
+    right: var(--side-right);
     bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 56px + 12px);
     width: 380px;
     height: 560px;
     max-width: min(
       380px,
-      calc(100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))
+      calc(100vw - var(--side-offset) - var(--opposite-offset))
     );
     max-height: min(
       560px,

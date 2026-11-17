@@ -11,11 +11,11 @@ const actions: { id: ActionId; label: string; path: string }[] = [
 export const dockStyles = `
 .quick-dock {
   position: fixed; z-index: 31;
-  left: calc(max(16px, env(safe-area-inset-left, 0px)) + 16px);
+  left: var(--side-left); right: var(--side-right);
   bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 66px);
   width: 40px; height: 40px;
-  transform: translate(var(--dock-x, 0px), var(--dock-y, 0px));
-  transition: transform 240ms ease;
+  transform: translate(calc(var(--side-sign) * var(--dock-x, 8px)), var(--dock-y, 0px));
+  transition: transform 240ms ease, opacity 240ms ease;
 }
 .quick-dock__button { position: absolute; left: 0; bottom: 0; transform: translateY(calc(var(--index) * -46px)); transition: transform 240ms ease; }
 .quick-dock__button:nth-child(1) { --index: 0; }
@@ -24,56 +24,47 @@ export const dockStyles = `
 .quick-dock__button:nth-child(4) { --index: 3; }
 .quick-dock__button:nth-child(5) { --index: 4; }
 .launcher[aria-expanded="true"] ~ .quick-dock {
-  --dock-x: calc(100vw - env(safe-area-inset-right, 0px) - 224px - max(16px, env(safe-area-inset-left, 0px)) - 16px);
+  --dock-x: 0px;
   --dock-y: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 66px - 100dvh + max(16px, env(safe-area-inset-top, 0px)) + 40px);
 }
-.launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button { transform: translateX(calc(var(--index) * 46px)); }
+.launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button { transform: translateX(calc(var(--side-sign) * var(--index) * 46px)); }
 @media (min-width: 480px) {
   .launcher[aria-expanded="true"] ~ .quick-dock {
-    --dock-x: calc(min(380px, 100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) - 240px);
+    --dock-x: 0px;
     --dock-y: calc(-12px - min(560px, 100dvh - max(16px, env(safe-area-inset-bottom, 0px)) - 56px - 12px - max(16px, env(safe-area-inset-top, 0px)) - 60px));
   }
 }
-/* Keep the open row and its edge tooltips within narrow viewports. */
-@media (max-width: 479px) {
-  .launcher[aria-expanded="true"] ~ .quick-dock { --dock-x: calc(max(0px, 100vw - env(safe-area-inset-right, 0px) - 224px) - max(16px, env(safe-area-inset-left, 0px)) - 16px); }
-  .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button:first-child::after { left: 0; transform: none; }
-  .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button:last-child::after { left: auto; right: 0; transform: none; }
-}
-@media (max-width: 223px) {
-  .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button { transform: translateX(calc(var(--index) * (100vw - 40px) / 4)); }
-}
+
 @media (prefers-reduced-motion: reduce) {
   .quick-dock, .quick-dock__button { transition: none; }
 }
 .quick-dock__button {
   display: grid; place-items: center; box-sizing: border-box;
   width: 40px; height: 40px; padding: 0; border-radius: 50%; cursor: pointer;
-  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border: none;
   color: var(--text-primary, #eef1f8); background: var(--bg-raised, #0b0f1a);
-  box-shadow: var(--shadow-card, 0 8px 24px rgba(0,0,0,.35));
+  box-shadow: inset 0 0 0 1px var(--border, rgba(255,255,255,.12)), var(--shadow-card, 0 8px 24px rgba(0,0,0,.35));
 }
 .quick-dock__button:hover { color: var(--accent-cyan, #5eead4); }
 .quick-dock__button:focus-visible { outline: 2px solid var(--accent-cyan, #5eead4); outline-offset: 3px; }
 .quick-dock__button svg { width: 20px; height: 20px; }
 .quick-dock__button::after {
-  /* The left safe area leaves at most 24px for a label: use the right side instead. */
-  content: attr(data-tooltip); position: absolute; left: calc(100% + 8px); right: auto; top: 50%;
+  content: attr(data-tooltip); position: absolute; left: var(--tip-left); right: var(--tip-right); top: 50%;
   transform: translateY(-50%); pointer-events: none; opacity: 0;
   box-sizing: border-box; width: max-content;
-  max-width: max(0px, calc(100vw - max(16px, env(safe-area-inset-left, 0px)) - 64px - env(safe-area-inset-right, 0px)));
+  max-width: max(0px, calc(100vw - var(--side-offset) - var(--opposite-offset) - 56px));
+  transition: opacity 180ms ease;
   overflow-wrap: anywhere;
   padding: 5px 8px; border-radius: 6px; font: 12px var(--font-body, system-ui, sans-serif);
   color: var(--text-primary, #eef1f8); background: var(--bg-raised, #0b0f1a);
   border: 1px solid var(--border, rgba(255,255,255,.12));
 }
 .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button::after {
-  left: 50%; right: auto; top: auto; bottom: calc(100% + 8px); transform: translateX(-50%);
-  max-width: calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  left: calc(var(--tip-origin) - var(--side-sign) * var(--index) * 46px); right: auto; top: auto; bottom: calc(100% + 8px); transform: translateX(calc(-1 * var(--tip-origin)));
+  max-width: calc(100vw - var(--side-offset) - var(--opposite-offset));
 }
-/* On short desktop viewports, put tooltips below instead of beyond the top edge. */
-@media (min-width: 480px) and (max-height: 750px) {
-  .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button::after { top: calc(100% + 8px); bottom: auto; }
+@media (prefers-reduced-motion: reduce) {
+  .quick-dock__button::after { transition: none; }
 }
 .quick-dock__button:hover::after, .quick-dock__button:focus-visible::after { opacity: 1; }
 `;

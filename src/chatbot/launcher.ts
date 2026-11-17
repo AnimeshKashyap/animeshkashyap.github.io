@@ -5,14 +5,37 @@ const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
 const LAUNCHER_BUBBLE_AUTO_HIDE_MS = 8000;
 
 const LAUNCHER_STYLE_BODY = `
+:host {
+  --side-left: max(16px, env(safe-area-inset-left, 0px));
+  --side-right: auto;
+  --side-offset: max(16px, env(safe-area-inset-left, 0px));
+  --opposite-offset: max(16px, env(safe-area-inset-right, 0px));
+  --side-sign: 1;
+  --side-align: flex-start;
+  --tip-left: calc(100% + 8px);
+  --tip-right: auto;
+  --tip-origin: 0%;
+}
+:host([data-side=right]) {
+  --side-left: auto;
+  --side-right: max(16px, env(safe-area-inset-right, 0px));
+  --side-offset: max(16px, env(safe-area-inset-right, 0px));
+  --opposite-offset: max(16px, env(safe-area-inset-left, 0px));
+  --side-sign: -1;
+  --side-align: flex-end;
+  --tip-left: auto;
+  --tip-right: calc(100% + 8px);
+  --tip-origin: 100%;
+}
 .launcher-wrap {
   position: fixed;
-  left: max(16px, env(safe-area-inset-left, 0px));
+  left: var(--side-left);
+  right: var(--side-right);
   bottom: max(16px, env(safe-area-inset-bottom, 0px));
   z-index: 30;
   display: flex;
   flex-direction: column-reverse;
-  align-items: flex-start;
+  align-items: var(--side-align);
   gap: 10px;
   pointer-events: none;
 }
@@ -51,7 +74,7 @@ const LAUNCHER_STYLE_BODY = `
 }
 
 .launcher:hover {
-  transform: translateY(-3px) scale(1.05);
+  transform: translateY(-3px);
   box-shadow:
     var(--shadow-card, 0 20px 60px rgba(0, 0, 0, 0.35)),
     0 12px 28px rgba(0, 0, 0, 0.22);
@@ -59,7 +82,7 @@ const LAUNCHER_STYLE_BODY = `
 }
 
 .launcher:active {
-  transform: translateY(-1px) scale(0.98);
+  transform: translateY(-1px);
 }
 
 .launcher:focus-visible {
@@ -74,13 +97,36 @@ const LAUNCHER_STYLE_BODY = `
   flex-shrink: 0;
 }
 
+.launcher::after {
+  content: attr(aria-label);
+  position: absolute;
+  left: var(--tip-left);
+  right: var(--tip-right);
+  top: 50%;
+  transform: translateY(-50%);
+  box-sizing: border-box;
+  width: max-content;
+  max-width: max(0px, calc(100vw - var(--side-offset) - var(--opposite-offset) - 64px));
+  overflow-wrap: anywhere;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font: 12px var(--font-body, system-ui, sans-serif);
+  color: var(--text-primary, #eef1f8);
+  background: var(--bg-raised, #0b0f1a);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.launcher:hover::after, .launcher:focus-visible::after { opacity: 1; }
+
 .launcher-bubble {
   box-sizing: border-box;
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  width: max(200px, min(260px, calc(100vw - 32px - 56px - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))));
-  max-width: min(260px, calc(100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  width: 260px;
+  max-width: calc(100vw - var(--side-offset) - var(--opposite-offset));
+  overflow-wrap: anywhere;
   margin: 0;
   padding: 10px 10px 10px 12px;
   border-radius: var(--radius-md, 14px);
@@ -178,6 +224,8 @@ const LAUNCHER_STYLE_BODY = `
     transition: none;
   }
 
+  .launcher::after { transition: none; }
+
   @starting-style {
     .launcher-bubble:not([hidden]) {
       opacity: 1;
@@ -187,9 +235,7 @@ const LAUNCHER_STYLE_BODY = `
 }
 `;
 
-const CHAT_ICON_SVG = `<svg class="launcher__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-  <path d="M7.5 8.25h9m-9 3H12m-6.75 9.75 1.664.89 2.23.596.09.055.199-.055 1.664-.89H18a2.25 2.25 0 0 0 2.25-2.25V7.5A2.25 2.25 0 0 0 18 5.25H6A2.25 2.25 0 0 0 3.75 7.5v9.75A2.25 2.25 0 0 0 6 20.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
+const CHAT_ICON_PATH = 'M7.5 8.25h9m-9 3H12m-6.75 9.75 1.664.89 2.23.596.09.055.199-.055 1.664-.89H18a2.25 2.25 0 0 0 2.25-2.25V7.5A2.25 2.25 0 0 0 18 5.25H6A2.25 2.25 0 0 0 3.75 7.5v9.75A2.25 2.25 0 0 0 6 20.25Z';
 
 function launcherHostStyles(page: 'main' | 'v4'): string {
   if (page === 'v4') {
@@ -286,6 +332,7 @@ function maybeMountLauncherBubble(wrap: HTMLElement): LauncherBubbleState | unde
 }
 
 export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButtonElement {
+  host.setAttribute('data-side', CHATBOT_CONFIG.launcherSide);
   const shadow = host.attachShadow({ mode: 'open' });
 
   const style = document.createElement('style');
@@ -302,7 +349,20 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
   button.setAttribute('aria-expanded', 'false');
   button.setAttribute('aria-haspopup', 'dialog');
   button.setAttribute('aria-controls', 'portfolio-chat-panel');
-  button.innerHTML = CHAT_ICON_SVG;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'launcher__icon');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', CHAT_ICON_PATH);
+  path.setAttribute('stroke', 'currentColor');
+  path.setAttribute('stroke-width', '1.5');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(path);
+  button.appendChild(svg);
 
   const bubbleState = maybeMountLauncherBubble(wrap);
 
