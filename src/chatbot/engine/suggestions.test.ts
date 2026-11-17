@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import * as knowledge from '../knowledge';
 import { CHATBOT_KEYWORDS } from '../config';
 import { getRecords } from '../knowledge';
 import type { KnowledgeRecord } from '../types';
@@ -58,6 +59,18 @@ describe('ranked autocomplete matching', () => {
     expect(new Set(result).size).toBe(result.length);
     result.length = 0;
     expect(suggest('what')).toHaveLength(3);
+  });
+
+  it('reuses the initialized corpus across repeated keystrokes without reading records again', () => {
+    const getRecordsSpy = vi.spyOn(knowledge, 'getRecords');
+    try {
+      const expected = suggest('what');
+      for (const prefix of ['wh', 'what', 'college', 'RÉSUMÉ', 'what']) suggest(prefix);
+      expect(suggest('what')).toEqual(expected);
+      expect(getRecordsSpy).not.toHaveBeenCalled();
+    } finally {
+      getRecordsSpy.mockRestore();
+    }
   });
 
   it('never returns the exact normalized typed sentence', () => {

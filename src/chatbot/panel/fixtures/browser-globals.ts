@@ -208,7 +208,7 @@ export class MockElement {
     this.listeners.set(type, list);
   }
 
-  dispatchEvent(type: string, init: { key?: string } = {}): void {
+  dispatchEvent(type: string, init: { key?: string; shiftKey?: boolean; isComposing?: boolean } = {}): void {
     const event = {
       ...init,
       preventDefault: vi.fn(),

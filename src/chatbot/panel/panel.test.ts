@@ -93,7 +93,8 @@ describe('chat panel', () => {
   });
 
   async function autocomplete(prefix = 'what') {
-    vi.useFakeTimers();
+    // Keep window's bound timer functions on the same clock as global timers.
+    if (!vi.isFakeTimers()) vi.useFakeTimers();
     browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
     const { shadow } = mountHost();
     openPanel();
@@ -205,6 +206,89 @@ describe('chat panel', () => {
     expect(list.hidden).toBe(true);
     expect(input.getAttribute('aria-expanded')).toBe('false');
     getResetHeaderButton(getPanel(shadow)).click();
+  });
+
+  it('wraps keyboard selection and transfers ARIA selection on hover', async () => {
+    const { input, list } = await autocomplete();
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+    for (const [key, index] of [
+      ['ArrowUp', 2], ['ArrowDown', 0], ['ArrowDown', 1], ['ArrowUp', 0], ['ArrowUp', 2],
+    ] as const) {
+      input.dispatchEvent('keydown', { key });
+      expect(input.getAttribute('aria-activedescendant')).toBe(list.children[index].id);
+      expect(list.children.map((option) => option.getAttribute('aria-selected')))
+        .toEqual(list.children.map((_, position) => String(position === index)));
+    }
+    list.children[1].dispatchEvent('mouseenter');
+    expect(input.getAttribute('aria-activedescendant')).toBe(list.children[1].id);
+    expect(list.children[2].getAttribute('aria-selected')).toBe('false');
+    expect(engineBehavior.ask).not.toHaveBeenCalled();
+  });
+
+  it('restarts debounce for new text and clears stale selection for short or empty input', async () => {
+    const { input, list } = await autocomplete();
+    input.dispatchEvent('keydown', { key: 'ArrowDown' });
+    input.value = 'college';
+    input.dispatchEvent('input');
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+    await vi.advanceTimersByTimeAsync(79);
+    input.value = 'resume';
+    input.dispatchEvent('input');
+    await vi.advanceTimersByTimeAsync(79);
+    expect(list.hidden).toBe(true);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(list.children.map((option) => option.textContent)).toEqual(['How can I download his resume?']);
+    for (const value of ['a', '', '   ']) {
+      input.value = value;
+      input.dispatchEvent('input');
+      await vi.advanceTimersByTimeAsync(80);
+      expect(list.hidden).toBe(true);
+      expect(list.children).toHaveLength(0);
+      expect(input.getAttribute('aria-expanded')).toBe('false');
+    }
+  });
+
+  it('does not complete on Shift-Tab, composing keys, or Right with a text selection', async () => {
+    const { input, list } = await autocomplete();
+    input.dispatchEvent('keydown', { key: 'ArrowDown', isComposing: true });
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+    input.dispatchEvent('keydown', { key: 'ArrowDown' });
+    input.dispatchEvent('keydown', { key: 'Tab', shiftKey: true });
+    const nativeInput = input as unknown as HTMLInputElement;
+    nativeInput.selectionStart = 0;
+    nativeInput.selectionEnd = input.value.length;
+    input.dispatchEvent('keydown', { key: 'ArrowRight' });
+    input.dispatchEvent('keydown', { key: 'Enter', isComposing: true });
+    expect(input.value).toBe('what');
+    expect(list.hidden).toBe(false);
+    expect(engineBehavior.ask).not.toHaveBeenCalled();
+  });
+
+  it('keeps autocomplete hidden throughout resolved reply playback, then restores on focus', async () => {
+    vi.useFakeTimers();
+    browser.reset();
+    browser = installBrowserGlobals();
+    browser.setReducedMotion(false);
+    engineBehavior.ask.mockResolvedValue(makeReply({ bubbles: ['First', 'Second'] }));
+    const { shadow, input, list } = await autocomplete();
+    shadow.querySelector('.chat-panel__form')!.dispatchEvent('submit');
+    await vi.advanceTimersByTimeAsync(0);
+    for (let stage = 0; stage < 4; stage++) {
+      expect(input.disabled).toBe(true);
+      input.value = 'what';
+      input.dispatchEvent('focus');
+      input.dispatchEvent('input');
+      await vi.advanceTimersByTimeAsync(80);
+      expect(list.hidden).toBe(true);
+      expect(input.getAttribute('aria-expanded')).toBe('false');
+      expect(input.getAttribute('aria-activedescendant')).toBeNull();
+      await vi.advanceTimersByTimeAsync(20);
+    }
+    await vi.runAllTimersAsync();
+    expect(input.disabled).toBe(false);
+    input.dispatchEvent('focus');
+    await vi.advanceTimersByTimeAsync(80);
+    expect(list.hidden).toBe(false);
   });
 
   it('uses bounded, wrapping theme-token styles and no HTML injection for autocomplete', () => {
