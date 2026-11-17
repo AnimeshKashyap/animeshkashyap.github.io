@@ -207,12 +207,19 @@ describe('chat panel', () => {
 
 
 
-  it('restores valid session history without replaying reveal', async () => {
+  it.each(['legacy', 'bubbles'] as const)('restores %s session history without replaying reveal', async (format) => {
+    const reply: Partial<Reply> = makeReply({ text: 'Stored answer', sources: [], actions: [], suggestions: [] });
+    if (format === 'legacy') {
+      delete reply.bubbles;
+    } else {
+      reply.bubbles = ['Stored answer', 'Second bubble'];
+      reply.text = 'Stale compatibility text';
+    }
     const stored = [
       { kind: 'user', text: 'Stored question' },
       {
         kind: 'bot',
-        reply: makeReply({ text: 'Stored answer', sources: [], actions: [], suggestions: [] }),
+        reply,
       },
     ];
     browser.sessionData.set(HISTORY_KEY, JSON.stringify(stored));
@@ -224,6 +231,10 @@ describe('chat panel', () => {
       expect(getPanel(shadow).textContent).toContain('Stored question');
       expect(getPanel(shadow).textContent).toContain('Stored answer');
     });
+    if (format === 'bubbles') {
+      expect(getPanel(shadow).textContent).toContain('Second bubble');
+      expect(getPanel(shadow).textContent).not.toContain('Stale compatibility text');
+    }
 
     const welcomeSuggestions = collectDescendants(getPanel(shadow)).filter(
       (node) =>
@@ -266,10 +277,15 @@ describe('chat panel', () => {
     });
   });
 
-  it('rejects malformed bot reply shapes in stored history', async () => {
+  it.each([
+    { text: 42, sources: [], actions: [], suggestions: [] },
+    { ...makeReply(), bubbles: 'not an array' },
+    { ...makeReply(), bubbles: ['valid', 42] },
+    { ...makeReply(), bubbles: null },
+  ])('rejects malformed bot reply shapes in stored history: %j', async (reply) => {
     browser.sessionData.set(
       HISTORY_KEY,
-      JSON.stringify([{ kind: 'bot', reply: { text: 42, sources: [], actions: [], suggestions: [] } }]),
+      JSON.stringify([{ kind: 'bot', reply }]),
     );
 
     const { shadow } = mountHost();

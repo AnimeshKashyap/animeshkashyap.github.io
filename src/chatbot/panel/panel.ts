@@ -72,13 +72,17 @@ function historyStorageKey(): string {
   return `${CHAT_HISTORY_STORAGE_PREFIX}:${page}`;
 }
 
-function isValidReply(value: unknown): value is Reply {
+type StoredReply = Omit<Reply, 'bubbles'> & { bubbles?: string[] };
+
+function isValidReply(value: unknown): value is StoredReply {
   if (typeof value !== 'object' || value === null) {
     return false;
   }
   const record = value as Record<string, unknown>;
   return (
     typeof record.text === 'string' &&
+    (record.bubbles === undefined ||
+      (Array.isArray(record.bubbles) && record.bubbles.every((bubble) => typeof bubble === 'string'))) &&
     Array.isArray(record.sources) &&
     Array.isArray(record.actions) &&
     Array.isArray(record.suggestions) &&
@@ -104,7 +108,11 @@ function parseStoredHistory(raw: string): HistoryEntry[] | null {
         continue;
       }
       if (record.kind === 'bot' && isValidReply(record.reply)) {
-        entries.push({ kind: 'bot', reply: record.reply });
+        const bubbles = record.reply.bubbles ?? [record.reply.text];
+        entries.push({
+          kind: 'bot',
+          reply: { ...record.reply, bubbles, text: bubbles.join('\n\n') },
+        });
         continue;
       }
       return null;

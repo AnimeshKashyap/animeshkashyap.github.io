@@ -85,6 +85,22 @@ describe('createEngine().ask()', () => {
     expect(reply.actions).toEqual(expected);
   });
 
+  it.each([
+    'hello',
+    'what can you do',
+    'open linkedin',
+    'download your cv',
+    'how can I contact you',
+    'what experience do you have with Python',
+    'tell me about your experience',
+    'what is your favourite pizza',
+    '',
+  ])('preserves the single-bubble compatibility contract for "%s"', async (query) => {
+    const reply = await engine.ask(query);
+    expect(reply.bubbles).toEqual([reply.text]);
+    expect(reply.text).toBe(reply.bubbles.join('\n\n'));
+  });
+
   it('help intent returns no navigation actions', async () => {
     const reply = await engine.ask('what can you do');
     expect(reply.confident).toBe(true);

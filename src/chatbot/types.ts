@@ -21,6 +21,8 @@ export interface KnowledgeRecord {
 export type ActionId = 'cv' | 'email' | 'linkedin' | 'github' | 'projects';
 
 export interface Reply {
+  bubbles: string[];
+  /** Plain-text compatibility view: bubbles joined with two newlines. */
   text: string;
   sources: { id: string; label: string }[];
   actions: ActionId[];

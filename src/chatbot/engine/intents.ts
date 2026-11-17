@@ -14,8 +14,10 @@ function normalizeIntentQuery(query: string): string {
 }
 
 function intentReply(text: string, actions: ActionId[]): Reply {
+  const bubbles = [text];
   return {
-    text,
+    bubbles,
+    text: bubbles.join('\n\n'),
     sources: [],
     actions,
     suggestions: [...CHATBOT_CONFIG.suggestedQuestions],
