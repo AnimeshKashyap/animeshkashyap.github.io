@@ -8,6 +8,9 @@ const QUERIES = [
   'how many years of experience',
   'years of experience',
   'how experienced is he',
+  'how long',
+  'career length',
+  'seniority',
 ] as const;
 
 const TOTAL_EXPERIENCE_ID = 'faq-total-experience';
@@ -43,6 +46,8 @@ describe('dedicated grounded total-experience answer', () => {
 
     const faq = records.find((record) => record.id === TOTAL_EXPERIENCE_ID);
     expect(faq).toBeDefined();
+    expect(reply.text).toBe(`${faq!.title}\n${faq!.text}`);
+    expect(reply.text.split('\n')).toHaveLength(2);
     expect(reply.sources).toEqual([{ id: TOTAL_EXPERIENCE_ID, label: faq!.source }]);
     expect(faq!.text).toContain('8 years 7 months');
   });
