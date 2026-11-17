@@ -63,6 +63,14 @@ npm test
 
 Vitest covers knowledge building, search, engine/intents, compose behavior, golden questions, launcher, and panel helpers. Also run `npm run lint` and `npm run build` before shipping.
 
+## Reply playback
+
+`Reply.bubbles` contains ordered, self-contained messages; `text` is their `\n\n` join. Grounded composition targets at most five bubbles of at most 400 characters. Sources, actions, and suggestions retain their original content.
+
+User messages appear immediately. The panel disables input during playback and shows an inline bot typing bubble before each message, source group, and action group, using the shared 100ms delay in `panel/messages.ts`. Suggestions appear together immediately after the final stage; each append scrolls the log to the bottom. Reset, Close, and Escape abort pending playback. Reduced motion and session-history restoration render instantly without timers; legacy history without `bubbles` uses `text` as one bubble.
+
+Fake-timer tests cover staging boundaries, chip timing, cancellation, reduced motion, and legacy/current restore. Golden visitor questions verify the bubble/text join and multi-message replies where expected.
+
 ## Dock collision notes (static audit)
 
 The desktop dock aligns with the panel's configured outer edge; its closed column is centered on the launcher. The dock uses inherited theme tokens with dark fallbacks for `/v4/`. The launcher wrapper's stacking context is 30, below the main navigation (50) and `/v4/` JSON modal (40), and above `/v4/` controls (20–25).

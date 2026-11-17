@@ -400,21 +400,61 @@ describe('chat panel', () => {
   });
 
   it.each(['reset', 'close', 'Escape'])('cancels staged timers on %s', async (control) => {
+    vi.useFakeTimers();
+    browser.reset();
+    browser = installBrowserGlobals();
+    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
     browser.setReducedMotion(false);
     const { shadow } = mountHost();
     openPanel();
     const input = shadow.querySelector('.chat-panel__input') as MockElement;
     input.value = 'Stage this';
     (shadow.querySelector('.chat-panel__form') as MockElement).dispatchEvent('submit');
-    await vi.waitFor(() => expect(engineBehavior.ask).toHaveBeenCalled());
+    await vi.advanceTimersByTimeAsync(0);
+    expect(engineBehavior.ask).toHaveBeenCalledTimes(1);
+    expect(input.disabled).toBe(true);
+    expect(getPanel(shadow).querySelector('.chat-msg--user')?.textContent).toBe('Stage this');
+    expect(vi.getTimerCount()).toBe(1);
     if (control === 'reset') getResetHeaderButton(getPanel(shadow)).click();
     else if (control === 'Escape') getPanel(shadow).dispatchEvent('keydown', { key: 'Escape' });
     else collectDescendants(getPanel(shadow)).find((node) => node.getAttribute('aria-label') === 'Close chat')?.click();
-    await new Promise((resolve) => setTimeout(resolve, 350));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(vi.getTimerCount()).toBe(0);
     expect(shadow.querySelector('.chat-panel__typing')).toBeNull();
     expect(input.disabled).toBe(false);
     expect(getPanel(shadow).textContent).not.toContain('Assistant response');
     expect(browser.sessionData.get(HISTORY_KEY) ?? '').not.toContain('Assistant response');
+  });
+
+  it.each([false, true])('keeps input busy until complete playback (reduced motion: %s)', async (reduced) => {
+    vi.useFakeTimers();
+    browser.reset();
+    browser = installBrowserGlobals();
+    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
+    browser.setReducedMotion(reduced);
+    engineBehavior.ask.mockResolvedValue(makeReply({ bubbles: ['First', 'Second'] }));
+    const { shadow } = mountHost();
+    openPanel();
+    const input = shadow.querySelector('.chat-panel__input') as MockElement;
+    const panel = getPanel(shadow);
+    input.value = 'Question';
+    (shadow.querySelector('.chat-panel__form') as MockElement).dispatchEvent('submit');
+    expect(input.disabled).toBe(true);
+    expect(panel.querySelector('.chat-msg--user')?.textContent).toBe('Question');
+    await vi.advanceTimersByTimeAsync(0);
+    if (!reduced) {
+      expect(input.disabled).toBe(true);
+      await vi.advanceTimersByTimeAsync(399);
+      expect(input.disabled).toBe(true);
+      expect(panel.textContent).not.toContain('Follow up question?');
+      expect(browser.sessionData.get(HISTORY_KEY)).not.toContain('First');
+      await vi.advanceTimersByTimeAsync(1);
+    }
+    expect(input.disabled).toBe(false);
+    expect(panel.textContent).toContain('Follow up question?');
+    expect(browser.sessionData.get(HISTORY_KEY)).toContain('First');
+    expect(panel.querySelector('.chat-panel__typing')).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('closes on Escape and returns focus to the launcher', () => {

@@ -152,6 +152,11 @@ describe('chat panel messages', () => {
 
     const bubble = log.querySelector('.chat-msg__bubble');
     expect(bubble?.classList.contains('chat-msg__bubble--reveal')).toBe(false);
+    expect(log.querySelectorAll('.chat-msg__source-chip')).toHaveLength(1);
+    expect(log.querySelectorAll('.chat-chip--action')).toHaveLength(1);
+    expect(log.querySelectorAll('.chat-chip--suggestion')).toHaveLength(1);
+    expect(log.querySelector('.chat-panel__typing')).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('stages bubbles, sources and actions every 100ms, then all suggestions', async () => {
@@ -172,7 +177,7 @@ describe('chat panel messages', () => {
     expect(log.querySelectorAll('.chat-panel__typing-dots span')).toHaveLength(3);
     await vi.advanceTimersByTimeAsync(100);
     expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(2);
-    expect(log.querySelector('.chat-panel__typing')).toBeNull();
+    expect(log.querySelectorAll('.chat-panel__typing')).toHaveLength(1);
     expect(log.querySelectorAll('.chat-msg__source-chip')).toHaveLength(0);
     await vi.advanceTimersByTimeAsync(100);
     expect(log.querySelectorAll('.chat-msg__source-chip')).toHaveLength(1);
@@ -196,6 +201,26 @@ describe('chat panel messages', () => {
     await completion;
     expect(vi.getTimerCount()).toBe(0);
     expect(log.childElementCount).toBe(0);
+  });
+
+  it.each([100, 200, 300])('cancels after %ims without revealing remaining groups', async (elapsed) => {
+    browser.setReducedMotion(false);
+    const log = createMessageLog();
+    const controller = new AbortController();
+    const completion = appendBotMessage(log, makeReply({ bubbles: ['First', 'Second'] }), {
+      onSuggestion: vi.fn(), onAction: vi.fn(),
+    }, { signal: controller.signal });
+    await vi.advanceTimersByTimeAsync(elapsed);
+    expect(log.querySelectorAll('.chat-panel__typing')).toHaveLength(1);
+    const visibleText = log.querySelectorAll('.chat-msg__line').length;
+    controller.abort();
+    await completion;
+    await vi.runAllTimersAsync();
+    expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(visibleText);
+    expect(log.querySelectorAll('.chat-chip--action')).toHaveLength(0);
+    expect(log.querySelectorAll('.chat-chip--suggestion')).toHaveLength(0);
+    expect(log.querySelector('.chat-panel__typing')).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('toggles typing indicator visibility and aria-hidden', () => {

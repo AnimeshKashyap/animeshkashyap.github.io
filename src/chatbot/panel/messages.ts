@@ -255,7 +255,9 @@ export async function appendBotMessage(
   appendBotExtras(extras, reply, handlers);
   for (const group of [...extras.children]) {
     if (staged && group.getAttribute('aria-label') !== 'Suggested follow-up questions') {
+      const typing = appendTypingMessage(log);
       await delay(signal);
+      typing.parentNode?.removeChild(typing);
     }
     if (signal?.aborted) return;
     row.appendChild(group);
