@@ -286,6 +286,16 @@
   animation: chat-msg-enter 250ms ease-out both;
 }
 
+@keyframes chat-panel-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes chat-msg-enter {
   from {
     opacity: 0;
@@ -592,6 +602,10 @@
     transition: none;
   }
 
+  .chat-panel--fade-in {
+    animation: chat-panel-fade-in 320ms ease-out both;
+  }
+
   .chat-panel__header { border-radius: 0; }
   .chat-panel__log { -webkit-overflow-scrolling: touch; }
   .chat-panel__input { font-size: 16px; }
@@ -721,6 +735,7 @@
   }
 
   .chat-msg--enter,
+  .chat-panel--fade-in,
   .chat-panel__autocomplete--enter {
     animation: none;
   }

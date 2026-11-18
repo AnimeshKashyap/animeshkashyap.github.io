@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Reply } from '../types';
 import { mountLauncher } from '../launcher';
 import { CHATBOT_KEYWORDS } from '../config';
+import { FLOATING_CHIPS_QUERY } from '../compact';
 import {
   installBrowserGlobals,
   registerElementById,
@@ -77,7 +78,7 @@ function getResetHeaderButton(panel: MockElement): MockElement {
 
 describe('chat panel', () => {
   let browser: BrowserGlobalsHandle;
-  let openPanel: () => void;
+  let openPanel: (options?: { focus?: boolean; fade?: boolean }) => void;
   let isPanelOpen: () => boolean;
 
   beforeEach(async () => {
@@ -513,6 +514,16 @@ describe('chat panel', () => {
     expect(panelSource).not.toMatch(/\.innerHTML\s*=/);
   });
 
+  it('automatic open crossfades in and clears the fade class afterwards', () => {
+    const { shadow } = mountHost();
+    openPanel({ focus: false, fade: true });
+    const panel = getPanel(shadow);
+    expect(panel.classList.contains('chat-panel--fade-in')).toBe(true);
+    expect(isPanelOpen()).toBe(true);
+    panel.dispatchEvent('animationend');
+    expect(panel.classList.contains('chat-panel--fade-in')).toBe(false);
+  });
+
   it('opens the panel and syncs launcher aria-expanded', () => {
     const { launcher, shadow } = mountHost();
     launcher.focus();
@@ -537,7 +548,19 @@ describe('chat panel', () => {
     expect(suggestions.map((node) => node.textContent)).toEqual(CHATBOT_KEYWORDS.map(({ label }) => label));
   });
 
+  it('on narrow screens shows all welcome chips under the greeting, not in the small side strip', () => {
+    const { shadow } = mountHost();
+    openPanel();
+    const panel = getPanel(shadow);
+    const chipsIn = (node: MockElement) => collectDescendants(node).filter((n) => n.classList.contains('chat-chip--suggestion'));
+    expect(chipsIn(panel.querySelector('.chat-panel__log')!)).toHaveLength(CHATBOT_KEYWORDS.length);
+    expect(chipsIn(panel.querySelector('.chat-panel__side-chips')!)).toHaveLength(0);
+  });
+
   it('keeps query chips in the side host (not under messages) and refreshes them after each reply', async () => {
+    const matchMedia = window.matchMedia.bind(window);
+    vi.spyOn(window, 'matchMedia').mockImplementation((query: string) =>
+      query === FLOATING_CHIPS_QUERY ? ({ matches: true, media: query } as MediaQueryList) : matchMedia(query));
     engineBehavior.ask.mockResolvedValue(makeReply({ text: 'Answer', suggestions: ['Skills', 'Projects'] }));
     const { shadow } = mountHost();
     openPanel();
