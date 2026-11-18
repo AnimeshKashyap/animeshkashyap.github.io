@@ -17,6 +17,9 @@ import type { ChatEngine, Reply } from '../types';
 const CHATBOT_HOST_ID = 'portfolio-chatbot-host';
 export const CHAT_PANEL_ID = 'portfolio-chat-panel';
 
+/** Autocomplete rows stay on screen at least this long once shown, so typing does not make them flicker. */
+const AUTOCOMPLETE_MIN_VISIBLE_MS = 3000;
+
 const CHAT_HISTORY_STORAGE_PREFIX = 'portfolio-chatbot-history';
 
 type HistoryEntry =
@@ -26,7 +29,8 @@ type HistoryEntry =
 type PanelElements = {
   root: HTMLElement;
   log: HTMLElement;
-
+  /** Query chips: floating beside the panel on wide screens, above the input on narrow ones. */
+  chips: HTMLElement;
   form: HTMLFormElement;
   input: HTMLInputElement;
   send: HTMLButtonElement;
@@ -325,7 +329,7 @@ function focusInput(input: HTMLInputElement): void {
 
 function ensureWelcome(elements: PanelElements): void {
   if (elements.log.childElementCount === 0) {
-    appendWelcomeMessage(elements.log, elements.handlers);
+    appendWelcomeMessage(elements.log, elements.handlers, elements.chips);
   }
 }
 
@@ -357,6 +361,7 @@ async function handleQuery(elements: PanelElements, query: string): Promise<void
   updateSendDisabled(elements.input, elements.send);
 
   appendUserMessage(elements.log, trimmed);
+  elements.chips.replaceChildren();
   messageHistory.push({ kind: 'user', text: trimmed });
   persistMessageHistory();
   elements.input.value = '';
@@ -371,7 +376,10 @@ async function handleQuery(elements: PanelElements, query: string): Promise<void
     if (controller.signal.aborted) return;
     typing.parentNode?.removeChild(typing);
     pendingTyping = undefined;
-    await appendBotMessage(elements.log, reply, elements.handlers, { signal: controller.signal });
+    await appendBotMessage(elements.log, reply, elements.handlers, {
+      signal: controller.signal,
+      chipsHost: elements.chips,
+    });
     if (controller.signal.aborted) return;
     messageHistory.push({ kind: 'bot', reply });
     persistMessageHistory();
@@ -427,6 +435,9 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
 
   const log = createMessageLog();
 
+  const chips = document.createElement('div');
+  chips.className = 'chat-panel__side-chips';
+
 
 
 
@@ -456,6 +467,8 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
 
   let focused = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let hideTimer: ReturnType<typeof setTimeout> | undefined;
+  let shownAt = 0;
   let options: HTMLButtonElement[] = [];
   let highlighted = -1;
 
@@ -469,6 +482,8 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   function hideAutocomplete(): void {
     clearTimeout(timer);
     timer = undefined;
+    clearTimeout(hideTimer);
+    hideTimer = undefined;
     highlight(-1);
     options = [];
     list.replaceChildren();
@@ -476,13 +491,40 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
     input.setAttribute('aria-expanded', 'false');
   }
 
+  // Fewer/no matches: keep the current rows until they have been visible for the minimum time.
+  function hideAfterMinimumVisible(): void {
+    if (list.hidden) return;
+    const remaining = shownAt + AUTOCOMPLETE_MIN_VISIBLE_MS - Date.now();
+    if (remaining <= 0) {
+      hideAutocomplete();
+      return;
+    }
+    if (hideTimer === undefined) hideTimer = setTimeout(hideAutocomplete, remaining);
+  }
+
   function scheduleAutocomplete(): void {
-    hideAutocomplete();
-    if (!focused || busy || !panelVisible || !input.value.trim()) return;
+    clearTimeout(timer);
+    timer = undefined;
+    if (!focused || busy || !panelVisible || !input.value.trim()) {
+      hideAutocomplete();
+      return;
+    }
     timer = setTimeout(() => {
       timer = undefined;
       if (!focused || busy || !panelVisible) return;
-      options = suggest(input.value, 3).map((sentence, index) => {
+      const sentences = suggest(input.value, 3);
+      if (sentences.length === 0) {
+        hideAfterMinimumVisible();
+        return;
+      }
+      clearTimeout(hideTimer);
+      hideTimer = undefined;
+      // Same rows: leave the list (and any keyboard highlight) untouched.
+      if (!list.hidden && sentences.length === options.length
+        && sentences.every((sentence, index) => options[index].textContent === sentence)) return;
+      const wasHidden = list.hidden;
+      highlight(-1);
+      options = sentences.map((sentence, index) => {
         const option = document.createElement('button');
         option.type = 'button';
         option.tabIndex = -1;
@@ -498,8 +540,15 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
         return option;
       });
       list.replaceChildren(...options);
-      list.hidden = options.length === 0;
-      input.setAttribute('aria-expanded', String(options.length > 0));
+      list.hidden = false;
+      input.setAttribute('aria-expanded', 'true');
+      if (wasHidden) {
+        // Fade in and expand upward from the textbox; row updates afterwards swap in place.
+        shownAt = Date.now();
+        list.classList.remove('chat-panel__autocomplete--enter');
+        void list.offsetWidth;
+        list.classList.add('chat-panel__autocomplete--enter');
+      }
     }, 80);
   }
 
@@ -515,7 +564,7 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   const elements: PanelElements = {
     root,
     log,
-
+    chips,
     form,
     input,
     send,
@@ -535,7 +584,7 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
     },
   };
 
-  body.append(log, list, form);
+  body.append(log, chips, list, form);
   root.append(header, body);
   shadow.appendChild(root);
 

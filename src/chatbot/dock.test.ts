@@ -14,7 +14,7 @@ describe('quick action dock', () => {
   it.each(['main', 'v4'] as const)('creates labelled SVG buttons and dispatches actions on %s', async (page) => {
     const dock = createDock(page) as unknown as MockElement;
     const buttons = dock.querySelectorAll('.quick-dock__button');
-    const expected = [['cv', 'Download resume'], ['email', 'Email Animesh'], ['linkedin', 'LinkedIn'], ['github', 'GitHub'], ['projects', 'View projects']];
+    const expected = [['cv', 'Get CV'], ['email', 'Email'], ['linkedin', 'LinkedIn'], ['github', 'GitHub'], ['projects', 'Projects']];
     expect(buttons).toHaveLength(expected.length);
     expect(runAction).not.toHaveBeenCalled();
     for (const [index, [id, label]] of expected.entries()) {
@@ -83,7 +83,7 @@ describe('quick action dock', () => {
         }
       }
     }
-    expect(dockStyles).toContain('var(--tip-origin) - var(--side-sign) * var(--index) * 58px');
+    expect(dockStyles).toContain('left: 50%; right: auto; top: auto; bottom: calc(100% + 8px); transform: translateX(-50%)');
     expect(dockStyles).toContain('top: auto; bottom: calc(100% + 8px)');
     expect(dockStyles).toContain(':focus-visible::after');
   });
@@ -100,7 +100,7 @@ describe('quick action dock', () => {
     expect(dockStyles).toContain('transition: transform 240ms ease');
     expect(dockStyles).not.toMatch(/transition:\s*[^;]*(?:left|bottom)/);
     expect(dockStyles).toContain('translateY(calc(var(--index) * -58px))');
-    expect(dockStyles).toContain('translateX(calc(var(--side-sign) * var(--index) * 58px))');
+    expect(dockStyles).toContain('translateX(calc(var(--side-sign) * var(--index) * var(--pitch)))');
     expect(dockStyles).toContain('@media (prefers-reduced-motion: reduce)');
     expect(dockStyles).toContain('.quick-dock, .quick-dock__button { transition: none; }');
     expect(dockStyles).not.toContain('top: calc(100% + 8px); bottom: auto');

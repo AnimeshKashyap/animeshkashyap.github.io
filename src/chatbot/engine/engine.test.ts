@@ -137,7 +137,7 @@ describe('createEngine().ask()', () => {
   it('unknown fact questions return confident:false with email action', async () => {
     const reply = await engine.ask('what is your favourite pizza');
     expect(reply.confident).toBe(false);
-    expect(reply.actions).toEqual(['email']);
+    expect(reply.actions).toEqual(['email', 'linkedin']);
     expect(reply.sources).toEqual([]);
   });
 

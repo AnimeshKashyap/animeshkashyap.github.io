@@ -13,11 +13,11 @@ function openInNewTab(url: string): void {
   anchor.click();
 }
 
-function triggerDownload(url: string): void {
+function triggerDownload(url: string, saveAs?: string): void {
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.rel = 'noopener noreferrer';
-  const fileName = url.split('/').pop();
+  const fileName = saveAs ?? url.split('/').pop();
   if (fileName !== undefined && fileName.length > 0) {
     anchor.download = fileName;
   }
@@ -51,7 +51,7 @@ export function runAction(id: ActionId, ctx: ActionContext): void {
       openInNewTab(action.url);
       break;
     case 'download':
-      triggerDownload(action.url);
+      triggerDownload(action.url, action.fileName);
       break;
     case 'mailto':
       openMailto(action.url);

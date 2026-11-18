@@ -13,16 +13,17 @@ const expectedTargets = [
   { label: 'Profile Summary', sourceId: 'profile-summary' },
   { label: 'Projects', sourceId: 'faq-projects' },
   { label: 'Education', sourceType: 'education' },
+  { label: 'Awards/Certifications', sourceId: 'edu-awards' },
   { label: 'Contact', action: 'email' },
   { label: 'Download Resume', action: 'cv' },
 ];
 
 describe('CHATBOT_KEYWORDS', () => {
-  it('defines all eight unique keyword labels and canonical questions', () => {
+  it('defines all nine unique keyword labels and canonical questions', () => {
     expect(CHATBOT_KEYWORDS.map(({ label }) => label)).toEqual(
       expectedTargets.map(({ label }) => label),
     );
-    expect(new Set(CHATBOT_KEYWORDS.map(({ query }) => query)).size).toBe(8);
+    expect(new Set(CHATBOT_KEYWORDS.map(({ query }) => query)).size).toBe(9);
     expect(CHATBOT_KEYWORDS.every(({ query }) => query.trim().length > 0)).toBe(true);
   });
 

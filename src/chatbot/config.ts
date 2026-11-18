@@ -7,6 +7,8 @@ interface ChatAction {
   label: string;
   kind: ActionKind;
   url: string;
+  /** Saved-as name for download actions (defaults to the URL's file name). */
+  fileName?: string;
 }
 
 function profileLinkUrl(label: string): string {
@@ -27,6 +29,7 @@ export const CHATBOT_KEYWORDS: { label: string; query: string }[] = [
   { label: 'Profile Summary', query: "What is Animesh's professional background?" },
   { label: 'Projects', query: 'What projects has he built?' },
   { label: 'Education', query: 'What is his education?' },
+  { label: 'Awards/Certifications', query: 'What awards and certifications does he have?' },
   { label: 'Contact', query: 'How can I contact him?' },
   { label: 'Download Resume', query: 'How can I download his resume?' },
 ];
@@ -44,9 +47,10 @@ export const CHATBOT_CONFIG = {
       label: 'Download résumé',
       kind: 'download',
       url: profile.resumeFile,
+      fileName: 'Animesh Kashyap - CV.pdf',
     },
     email: {
-      label: 'Email Animesh',
+      label: 'Email',
       kind: 'mailto',
       url: `mailto:${profile.email}`,
     },
