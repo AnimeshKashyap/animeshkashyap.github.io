@@ -91,6 +91,9 @@ export class MockElement {
   readonly attributes = new Map<string, string>();
   readonly style = {
     _values: {} as Record<string, string>,
+    setProperty(name: string, value: string): void {
+      this._values[name] = value;
+    },
     set animationDelay(value: string) {
       this._values['animation-delay'] = value;
     },

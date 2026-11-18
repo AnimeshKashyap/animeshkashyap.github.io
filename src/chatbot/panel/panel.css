@@ -529,6 +529,25 @@
 }
 
 @media (--chatbot-compact) {
+  .chat-panel {
+    top: var(--chat-viewport-top, 0px);
+    bottom: auto;
+    width: 100vw;
+    height: var(--chat-viewport-height, 100dvh);
+    max-height: var(--chat-viewport-height, 100dvh);
+    padding-top: env(safe-area-inset-top, 0px);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: hidden;
+    z-index: 60;
+    transition: none;
+  }
+
+  .chat-panel__header { border-radius: 0; }
+  .chat-panel__log { -webkit-overflow-scrolling: touch; }
+  .chat-panel__input { font-size: 16px; }
+
   @starting-style {
     .chat-panel:not([hidden]) {
       transform: translateY(100%);

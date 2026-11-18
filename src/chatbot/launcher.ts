@@ -174,6 +174,7 @@ const LAUNCHER_STYLE_BODY = `
 
 @media (--chatbot-compact) {
   .launcher-bubble { display: none; }
+  .launcher-wrap:has(.launcher[aria-expanded="true"]) { display: none; }
 }
 
 /* Hide synchronously, including programmatic panel opens and tooltip-producing focus. */

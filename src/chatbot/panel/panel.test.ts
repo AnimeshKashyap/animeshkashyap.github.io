@@ -110,6 +110,75 @@ describe('chat panel', () => {
     return { shadow, input, list };
   }
 
+  it('locks compact pages, tracks the keyboard viewport and restores overflow/focus on close', () => {
+    const values = new Map([['overflow', 'scroll']]);
+    const style = {
+      getPropertyValue: (name: string) => values.get(name) ?? '',
+      getPropertyPriority: () => 'important',
+      setProperty: vi.fn((name: string, value: string) => values.set(name, value)),
+      removeProperty: (name: string) => values.delete(name),
+    };
+    Object.assign(document, { documentElement: { style } });
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+    const listeners = new Map<string, () => void>();
+    const viewport = {
+      height: 420, offsetTop: 12,
+      addEventListener: (name: string, callback: () => void) => listeners.set(name, callback),
+      removeEventListener: (name: string) => listeners.delete(name),
+    };
+    Object.assign(window, { visualViewport: viewport });
+    let onRemoval: () => void = () => {};
+    const disconnect = vi.fn();
+    vi.stubGlobal('MutationObserver', class {
+      constructor(callback: () => void) { onRemoval = callback; }
+      observe() {}
+      disconnect = disconnect;
+    });
+    const { shadow, launcher } = mountHost();
+    // The fixture has a deliberately minimal CSSStyleDeclaration.
+    openPanel();
+    const panel = getPanel(shadow);
+    expect(values.get('overflow')).toBe('hidden');
+    expect(panel.style._values['--chat-viewport-height']).toBe('420px');
+    viewport.height = 300;
+    listeners.get('resize')!();
+    expect(panel.style._values['--chat-viewport-height']).toBe('300px');
+    getResetHeaderButton(panel).click();
+    expect(values.get('overflow')).toBe('hidden');
+    panel.dispatchEvent('keydown', { key: 'Escape' });
+    expect(style.setProperty).toHaveBeenLastCalledWith('overflow', 'scroll', 'important');
+    expect(browser.getFocusedElement()).toBe(launcher);
+    expect(listeners.size).toBe(0);
+    openPanel();
+    onRemoval();
+    expect(values.get('overflow')).toBe('scroll');
+    expect(isPanelOpen()).toBe(false);
+    expect(disconnect).toHaveBeenCalled();
+  });
+
+  it('leaves desktop overflow untouched and closes through the header with launcher focus', () => {
+    const setProperty = vi.fn();
+    Object.assign(document, { documentElement: { style: { setProperty } } });
+    const { shadow, launcher } = mountHost();
+    openPanel();
+    const actions = getPanel(shadow).querySelector('.chat-panel__actions')!;
+    actions.children[1].click();
+    expect(isPanelOpen()).toBe(false);
+    expect(browser.getFocusedElement()).toBe(launcher);
+    expect(setProperty).not.toHaveBeenCalled();
+  });
+
+  it('defines a safe-area full-screen compact shell without disabling log scrolling', () => {
+    expect(panelCss).toContain('height: var(--chat-viewport-height, 100dvh)');
+    expect(panelCss).toContain('width: 100vw');
+    for (const side of ['top', 'bottom', 'left', 'right']) {
+      expect(panelCss).toContain(`env(safe-area-inset-${side}, 0px)`);
+    }
+    expect(panelCss).toContain('overflow-y: auto');
+    expect(panelCss).toContain('overscroll-behavior: contain');
+    expect(panelCss).toContain('-webkit-overflow-scrolling: touch');
+  });
+
   it('debounces up to three accessible options directly above the form, separate from chips', async () => {
     const { shadow, input, list } = await autocomplete();
     expect(input.getAttribute('role')).toBe('combobox');

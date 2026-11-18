@@ -1,5 +1,5 @@
 import panelCss from './panel.css?inline';
-import { resolveCompactStyles } from '../compact';
+import { matchCompactMode, resolveCompactStyles } from '../compact';
 import { suggest } from '../engine/suggestions';
 import { runAction, type ActionContext } from '../engine/actions';
 import {
@@ -42,6 +42,46 @@ let busy = false;
 let pendingResponse: AbortController | undefined;
 let pendingTyping: HTMLElement | undefined;
 let messageHistory: HistoryEntry[] = [];
+let releaseCompactViewport: (() => void) | undefined;
+
+function lockCompactViewport(root: HTMLElement): void {
+  releaseCompactViewport?.();
+  if (!matchCompactMode().matches) return;
+  const documentRoot = document.documentElement;
+  const overflow = documentRoot.style.getPropertyValue('overflow');
+  const priority = documentRoot.style.getPropertyPriority('overflow');
+  documentRoot.style.setProperty('overflow', 'hidden');
+  const viewport = window.visualViewport;
+  const update = (): void => {
+    if (!viewport) return;
+    root.style.setProperty('--chat-viewport-height', `${viewport.height}px`);
+    root.style.setProperty('--chat-viewport-top', `${viewport.offsetTop}px`);
+  };
+  update();
+  viewport?.addEventListener('resize', update);
+  viewport?.addEventListener('scroll', update);
+  // Host removal has no framework unmount hook: release the document lock directly.
+  const observer = new MutationObserver(() => {
+    if (!root.isConnected) {
+      releaseCompactViewport?.();
+      if (panelElements) cancelResponse(panelElements);
+      panelVisible = false;
+      panelMounted = false;
+      panelElements = undefined;
+    }
+  });
+  observer.observe(documentRoot, { childList: true, subtree: true });
+  releaseCompactViewport = () => {
+    observer.disconnect();
+    viewport?.removeEventListener('resize', update);
+    viewport?.removeEventListener('scroll', update);
+    if (overflow) documentRoot.style.setProperty('overflow', overflow, priority);
+    else documentRoot.style.removeProperty('overflow');
+    root.style.removeProperty('--chat-viewport-height');
+    root.style.removeProperty('--chat-viewport-top');
+    releaseCompactViewport = undefined;
+  };
+}
 
 function getChatbotShadow(): ShadowRoot | null {
   const host = document.getElementById(CHATBOT_HOST_ID);
@@ -176,6 +216,9 @@ async function restoreMessageHistory(elements: PanelElements): Promise<void> {
 }
 
 function resetConversation(elements: PanelElements): void {
+  // Reset releases the old lock; the still-open compact dialog acquires a fresh one.
+  releaseCompactViewport?.();
+  if (panelVisible) lockCompactViewport(elements.root);
   cancelResponse(elements);
   messageHistory = [];
   persistMessageHistory();
@@ -184,6 +227,7 @@ function resetConversation(elements: PanelElements): void {
 }
 
 function closePanel(elements: PanelElements): void {
+  releaseCompactViewport?.();
   cancelResponse(elements);
   panelVisible = false;
   setPanelHidden(elements.root, true);
@@ -546,6 +590,7 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
 }
 
 function showPanel(elements: PanelElements): void {
+  lockCompactViewport(elements.root);
   panelVisible = true;
   setPanelHidden(elements.root, false);
   syncLauncherExpanded(true);
