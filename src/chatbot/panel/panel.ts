@@ -1,4 +1,5 @@
 import panelCss from './panel.css?inline';
+import { resolveCompactStyles } from '../compact';
 import { suggest } from '../engine/suggestions';
 import { runAction, type ActionContext } from '../engine/actions';
 import {
@@ -329,7 +330,7 @@ async function handleSend(elements: PanelElements): Promise<void> {
 
 function mountPanel(shadow: ShadowRoot): PanelElements {
   const style = document.createElement('style');
-  style.textContent = panelCss;
+  style.textContent = resolveCompactStyles(panelCss);
   shadow.appendChild(style);
 
 

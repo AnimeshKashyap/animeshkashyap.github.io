@@ -1,3 +1,4 @@
+import { matchCompactMode, resolveCompactStyles } from './compact';
 import { CHATBOT_CONFIG } from './config';
 import { createDock, dockStyles } from './dock';
 
@@ -171,7 +172,7 @@ const LAUNCHER_STYLE_BODY = `
   visibility: hidden;
 }
 
-@media (width < 480px) {
+@media (--chatbot-compact) {
   .launcher-bubble { display: none; }
 }
 
@@ -291,7 +292,7 @@ function launcherHostStyles(page: 'main' | 'v4'): string {
 }
 
 export function buildLauncherStyles(page: 'main' | 'v4'): string {
-  return `${launcherHostStyles(page)}${LAUNCHER_STYLE_BODY}${dockStyles}`;
+  return resolveCompactStyles(`${launcherHostStyles(page)}${LAUNCHER_STYLE_BODY}${dockStyles}`);
 }
 
 function launcherBubbleSeen(): boolean {
@@ -325,8 +326,8 @@ function hideLauncherBubble(state: LauncherBubbleState): void {
 }
 
 function maybeMountLauncherBubble(wrap: HTMLElement): LauncherBubbleState | undefined {
-  const mobile = window.matchMedia('(width < 480px)');
-  if (mobile.matches || launcherBubbleSeen()) {
+  const compact = matchCompactMode();
+  if (compact.matches || launcherBubbleSeen()) {
     return undefined;
   }
 
@@ -356,7 +357,7 @@ function maybeMountLauncherBubble(wrap: HTMLElement): LauncherBubbleState | unde
   };
 
   dismiss.addEventListener('click', dismissBubble);
-  mobile.addEventListener?.('change', (event) => {
+  compact.addEventListener?.('change', (event) => {
     if (event.matches) dismissBubble();
   });
 

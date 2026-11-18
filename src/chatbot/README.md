@@ -91,6 +91,8 @@ The desktop dock aligns with the panel's configured outer edge; its closed colum
 
 Width alone cannot guarantee separation: on short viewports the open dock can enter the top navigation or `/v4/` selector band. Short-height and compact layouts remain follow-up work; v4 customizer collision handling is out of scope. The greeting remains a bubble above the launcher, not a side tooltip. Geometry-based tests cover both sides and asymmetric safe areas; no browser or visual verification was performed.
 
+`compact.ts` now shares the compact decision `(max-width: 479px), (max-height: 499px)` between launcher greeting `matchMedia` and scoped launcher/dock/panel CSS. `resolveCompactStyles` expands the `(--chatbot-compact)` and complementary `(--chatbot-desktop)` media aliases before styles enter the shadow root. Desktop requires both width ≥480px and height ≥500px. This is breakpoint groundwork only; full-screen panel and compact dock controls remain follow-up work. Static contract tests cover the boundary values and landscape/short windows, not browser layout.
+
 ## Optional embeddings reranker (not implemented)
 
 Today ranking is entirely MiniSearch + synonym/entity logic in `search.ts`. To add a reranker later without changing the UI contract:

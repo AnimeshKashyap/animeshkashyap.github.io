@@ -528,7 +528,7 @@
   opacity: 0.45;
 }
 
-@media (max-width: 479px) {
+@media (--chatbot-compact) {
   @starting-style {
     .chat-panel:not([hidden]) {
       transform: translateY(100%);
@@ -544,7 +544,7 @@
   }
 }
 
-@media (min-width: 480px) {
+@media (--chatbot-desktop) {
   .chat-panel {
     left: var(--side-left);
     right: var(--side-right);

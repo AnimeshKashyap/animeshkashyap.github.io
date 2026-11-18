@@ -1,3 +1,4 @@
+import { resolveCompactStyles } from './compact';
 import type { ActionId } from './types';
 
 const actions: { id: ActionId; label: string; path: string }[] = [
@@ -8,7 +9,7 @@ const actions: { id: ActionId; label: string; path: string }[] = [
   { id: 'projects', label: 'View projects', path: 'M3 6h7l2 2h9v11H3z M3 8h18' },
 ];
 
-export const dockStyles = `
+export const dockStyles = resolveCompactStyles(`
 .quick-dock {
   position: fixed; z-index: 31;
   left: var(--side-left); right: var(--side-right);
@@ -28,7 +29,7 @@ export const dockStyles = `
   --dock-y: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 66px - 100dvh + max(16px, env(safe-area-inset-top, 0px)) + 40px);
 }
 .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button { transform: translateX(calc(var(--side-sign) * var(--index) * 46px)); }
-@media (min-width: 480px) {
+@media (--chatbot-desktop) {
   .launcher[aria-expanded="true"] ~ .quick-dock {
     --dock-x: 0px;
     --dock-y: calc(-12px - min(560px, 100dvh - max(16px, env(safe-area-inset-bottom, 0px)) - 56px - 12px - max(16px, env(safe-area-inset-top, 0px)) - 60px));
@@ -67,7 +68,7 @@ export const dockStyles = `
   .quick-dock__button::after { transition: none; }
 }
 .quick-dock__button:hover::after, .quick-dock__button:focus-visible::after { opacity: 1; }
-`;
+`);
 
 export function createDock(page: 'main' | 'v4'): HTMLElement {
   const dock = document.createElement('div');

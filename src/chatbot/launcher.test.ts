@@ -175,12 +175,12 @@ describe('mountLauncher greeting bubble', () => {
     expect(getBubble(shadow)).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
     expect(browser.sessionData.has(LAUNCHER_BUBBLE_SESSION_KEY)).toBe(false);
-    expect(buildLauncherStyles(page)).toContain('@media (width < 480px)');
+    expect(buildLauncherStyles(page)).toContain('@media (max-width: 479px), (max-height: 499px)');
     expect(buildLauncherStyles(page)).toContain('.launcher-bubble { display: none; }');
-    expect(window.matchMedia).toHaveBeenCalledWith('(width < 480px)');
+    expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 479px), (max-height: 499px)');
   });
 
-  it('hides and cancels the timer on resizing below 480px, never resurrecting the greeting', () => {
+  it('hides and cancels the timer on entering compact mode, never resurrecting the greeting', () => {
     vi.useFakeTimers();
     let change: (event: { matches: boolean }) => void = () => {};
     vi.spyOn(window, 'matchMedia').mockReturnValue({
