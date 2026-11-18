@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { COMPACT_QUERY } from './compact';
 import { createDock, dockStyles, mountMoreToggle } from './dock';
 import { runAction } from './engine/actions';
 import { installBrowserGlobals, type BrowserGlobalsHandle, type MockElement } from './panel/fixtures/browser-globals';
@@ -155,6 +156,44 @@ describe('quick action dock', () => {
       for (const b of d.querySelectorAll('.quick-dock__button')) expect(b.getAttribute('tabindex')).toBe('-1');
       expect(dock).toBeDefined();
       expect(more).toBeDefined();
+    });
+
+    it('follows the real compact query for height-only switches without stuck state or leaked listeners', () => {
+      const changes = new Set<() => void>();
+      let size = { w: 800, h: 400 };
+      const mq = {
+        get matches() { return size.w <= 479 || size.h <= 499; },
+        addEventListener: (_: string, l: () => void) => changes.add(l),
+        removeEventListener: (_: string, l: () => void) => changes.delete(l),
+      };
+      const resize = (w: number, h: number) => { size = { w, h }; for (const l of [...changes]) l(); };
+      setup();
+      const mm = vi.spyOn(window, 'matchMedia').mockReturnValue(mq as unknown as MediaQueryList);
+      const wrap = document.createElement('div') as unknown as MockElement;
+      const d = createDock('main') as unknown as MockElement;
+      wrap.appendChild(d);
+      mountMoreToggle(wrap as unknown as HTMLElement, d as unknown as HTMLElement);
+      const arrow = wrap.querySelector('.quick-dock__more')!;
+      expect(mm).toHaveBeenCalledWith(COMPACT_QUERY);
+      expect(mq.matches).toBe(true);
+      expect(d.hasAttribute('inert')).toBe(true);
+      arrow.click();
+      expect(d.hasAttribute('data-open')).toBe(true);
+      resize(800, 600);
+      expect(mq.matches).toBe(false);
+      expect(d.hasAttribute('data-open')).toBe(false);
+      expect(d.hasAttribute('inert')).toBe(false);
+      expect(arrow.getAttribute('aria-expanded')).toBe('false');
+      expect(docListeners.get('pointerdown')?.size ?? 0).toBe(0);
+      expect(docListeners.get('keydown')?.size ?? 0).toBe(0);
+      resize(800, 400);
+      expect(d.hasAttribute('data-open')).toBe(false);
+      expect(d.hasAttribute('inert')).toBe(true);
+      arrow.click();
+      resize(800, 600);
+      resize(800, 400);
+      expect(d.hasAttribute('data-open')).toBe(false);
+      expect(docListeners.get('keydown')?.size ?? 0).toBe(0);
     });
 
     it('renders an accessible arrow wired to the dock and hides collapsed icons', () => {

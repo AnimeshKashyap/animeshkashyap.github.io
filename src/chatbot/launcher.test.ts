@@ -213,6 +213,15 @@ describe('mountLauncher greeting bubble', () => {
     expect(buildLauncherStyles('main')).toContain('.quick-dock__more { display: none; }');
   });
 
+  it('hides the whole compact launcher column (chat icon, dock, arrow) while the chat is open', () => {
+    const css = buildLauncherStyles('main');
+    const compact = css.slice(css.indexOf('@media (max-width: 479px), (max-height: 499px)'));
+    expect(compact).toMatch(/\.launcher-wrap:has\(\.launcher\[aria-expanded="true"\]\)\s*\{\s*display:\s*none;/);
+    const { shadow } = mountLauncherOnPage('main');
+    const wrap = shadow.querySelector('.launcher-wrap')!;
+    for (const sel of ['.launcher', '.quick-dock', '.quick-dock__more']) expect(wrap.querySelector(sel)).not.toBeNull();
+  });
+
   it.each(['pointerenter', 'mouseenter', 'focus', 'pointerdown', 'keydown'])('suppresses greeting on every launcher/dock %s before tooltip display', (event) => {
     vi.useFakeTimers();
     for (const index of [0, 1, 2, 3, 4, 5]) {

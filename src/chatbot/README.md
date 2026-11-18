@@ -105,3 +105,7 @@ Today ranking is entirely MiniSearch + synonym/entity logic in `search.ts`. To a
 ### Compact "More options" toggle (17c)
 
 In compact mode (`COMPACT_QUERY`) the launcher column shows only the chat icon and a round up-arrow `More options` button (`aria-expanded`, `aria-controls` → `#portfolio-chat-dock`) on the configured `launcherSide`. Tapping it expands the same five dock icons (same size, gap and labels as desktop) as a staggered vertical stack above it; the arrow rotates 180°. Collapse happens on arrow tap, outside `pointerdown`, Esc, action select, or chat open; the document `pointerdown`/`keydown` listeners exist only while expanded. Collapsed icons are `inert`, `aria-hidden` and `tabindex=-1`. Tooltips are hidden in compact mode; motion is skipped under `prefers-reduced-motion`. Desktop/tablet is unchanged (arrow `display: none`). Tests mock `matchMedia`; no browser verification was done.
+
+### Compact-mode test coverage (17e)
+
+Tests mock `matchMedia` (no browser). They cover: closed state with only the chat icon and More options arrow; arrow expand/collapse (`aria-expanded`, `aria-controls`, inert/hidden collapsed icons); collapse on outside `pointerdown`, Esc and action select (action still runs); launcher column hidden once chat opens; `documentElement` overflow lock set while the compact panel is open and restored on close/reset/unmount; chat log keeps `overflow-y: auto` and `overscroll-behavior: contain`; breakpoint switching including height-only 800x400 (compact) vs 800x600 (not) with no stuck expanded state or leaked listeners.
