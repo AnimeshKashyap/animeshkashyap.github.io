@@ -64,6 +64,41 @@ describe('buildLauncherStyles', () => {
       }
     }
   });
+  it.each(['main', 'v4'] as const)('centres the inward greeting beside the icon on %s without entering the dock column', (page) => {
+    const styles = buildLauncherStyles(page);
+    const bubble = styles.slice(styles.indexOf('.launcher-bubble {'), styles.indexOf('.launcher-bubble[hidden]'));
+    expect(bubble).toContain('position: absolute');
+    expect(bubble).toContain('left: var(--tip-left)');
+    expect(bubble).toContain('right: var(--tip-right)');
+    expect(bubble).toContain('bottom: 28px');
+    expect(bubble).toContain('transform: translateY(50%)');
+    expect(bubble).toContain('width: 260px');
+    expect(bubble).toContain('overflow-wrap: anywhere');
+    expect(bubble).toContain('.launcher-bubble::before');
+    expect(bubble).toContain('left: var(--tip-origin)');
+    expect(bubble).toContain('top: 50%');
+    expect(bubble).toContain('scaleX(var(--side-sign)) rotate(45deg)');
+    expect(styles).toContain('opacity: 1;\n      transform: translateY(50%)');
+
+    // Static geometry only: arbitrary wrapped heights keep the same icon centre.
+    for (const side of ['left', 'right']) {
+      for (const viewport of [768, 1280]) {
+        for (const height of [50, 100, 240]) {
+          const edge = 16;
+          const iconLeft = side === 'left' ? edge : viewport - edge - 56;
+          const width = Math.min(260, viewport - edge * 2 - 64);
+          const tooltipLeft = side === 'left' ? iconLeft + 64 : iconLeft - 8 - width;
+          const tooltipBottom = edge + 28 - height / 2;
+          expect(tooltipBottom + height / 2).toBe(edge + 28);
+          expect(tooltipLeft).toBeGreaterThanOrEqual(edge);
+          expect(tooltipLeft + width).toBeLessThanOrEqual(viewport - edge);
+          const dockLeft = iconLeft + 8;
+          expect(side === 'left' ? tooltipLeft >= dockLeft + 40 : tooltipLeft + width <= dockLeft).toBe(true);
+        }
+      }
+    }
+  });
+
   it('main page :host does not pin dark theme tokens so site tokens can inherit', () => {
     const styles = buildLauncherStyles('main');
     const hostBlock = styles.slice(0, styles.indexOf('.launcher-wrap'));
@@ -91,7 +126,7 @@ describe('buildLauncherStyles', () => {
 
     expect(styles).toContain('var(--shadow-card,');
     expect(styles).toContain('var(--radius-md,');
-    expect(styles).toContain('calc(100vw - var(--side-offset) - var(--opposite-offset))');
+    expect(styles).toContain('max-width: max(0px, calc(100vw - var(--side-offset) - var(--opposite-offset) - 64px))');
     expect(styles).toContain('env(safe-area-inset-left');
     expect(styles).toContain('env(safe-area-inset-right');
   });

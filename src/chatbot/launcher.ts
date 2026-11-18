@@ -120,12 +120,16 @@ const LAUNCHER_STYLE_BODY = `
 .launcher:hover::after, .launcher:focus-visible::after { opacity: 1; }
 
 .launcher-bubble {
+  position: absolute;
+  left: var(--tip-left);
+  right: var(--tip-right);
+  bottom: 28px;
   box-sizing: border-box;
   display: flex;
   align-items: flex-start;
   gap: 8px;
   width: 260px;
-  max-width: calc(100vw - var(--side-offset) - var(--opposite-offset));
+  max-width: max(0px, calc(100vw - var(--side-offset) - var(--opposite-offset) - 64px));
   overflow-wrap: anywhere;
   margin: 0;
   padding: 10px 10px 10px 12px;
@@ -138,24 +142,39 @@ const LAUNCHER_STYLE_BODY = `
   background: var(--bg-raised, #0b0f1a);
   box-shadow: var(--shadow-card, 0 20px 60px rgba(0, 0, 0, 0.35));
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(50%);
   transition:
     opacity 200ms ease,
     transform 200ms ease,
     visibility 200ms allow-discrete;
 }
 
+.launcher-bubble::before {
+  content: '';
+  position: absolute;
+  left: var(--tip-origin);
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  border: inherit;
+  border-top: 0;
+  border-right: 0;
+  transform: translate(-50%, -50%) scaleX(var(--side-sign)) rotate(45deg);
+  pointer-events: none;
+}
+
 .launcher-bubble[hidden] {
   display: none;
   opacity: 0;
-  transform: translateY(6px);
+  transform: translate(calc(var(--side-sign) * -6px), 50%);
   visibility: hidden;
 }
 
 @starting-style {
   .launcher-bubble:not([hidden]) {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translate(calc(var(--side-sign) * -6px), 50%);
   }
 }
 
@@ -229,7 +248,7 @@ const LAUNCHER_STYLE_BODY = `
   @starting-style {
     .launcher-bubble:not([hidden]) {
       opacity: 1;
-      transform: none;
+      transform: translateY(50%);
     }
   }
 }
