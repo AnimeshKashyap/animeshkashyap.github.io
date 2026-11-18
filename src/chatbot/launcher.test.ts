@@ -64,6 +64,55 @@ describe('buildLauncherStyles', () => {
       }
     }
   });
+  it.each(['main', 'v4'] as const)('centres the inward greeting beside the icon on %s without entering the dock column', (page) => {
+    const styles = buildLauncherStyles(page);
+    const bubble = styles.slice(styles.indexOf('.launcher-bubble {'), styles.indexOf('.launcher-bubble[hidden]'));
+    expect(bubble).toContain('position: absolute');
+    expect(bubble).toContain('left: var(--tip-left)');
+    expect(bubble).toContain('right: var(--tip-right)');
+    expect(bubble).toContain('bottom: 28px');
+    expect(bubble).toContain('transform: translateY(50%)');
+    expect(bubble).toContain('width: 260px');
+    expect(bubble).toContain('overflow-wrap: anywhere');
+    expect(bubble).toContain('.launcher-bubble::before');
+    expect(bubble).toContain('left: var(--tip-origin)');
+    expect(bubble).toContain('top: 50%');
+    expect(bubble).toContain('scaleX(var(--side-sign)) rotate(45deg)');
+    expect(styles).toContain('opacity: 1;\n      transform: translateY(50%)');
+
+    // Static geometry only: arbitrary wrapped heights keep the same icon centre.
+    for (const side of ['left', 'right']) {
+      for (const viewport of [768, 1280]) {
+        for (const height of [50, 100, 240]) {
+          const edge = 16;
+          const iconLeft = side === 'left' ? edge : viewport - edge - 56;
+          const width = Math.min(260, viewport - edge * 2 - 64);
+          const tooltipLeft = side === 'left' ? iconLeft + 64 : iconLeft - 8 - width;
+          const tooltipBottom = edge + 28 - height / 2;
+          expect(tooltipBottom + height / 2).toBe(edge + 28);
+          expect(tooltipLeft).toBeGreaterThanOrEqual(edge);
+          expect(tooltipLeft + width).toBeLessThanOrEqual(viewport - edge);
+          const dockLeft = iconLeft + 8;
+          expect(side === 'left' ? tooltipLeft >= dockLeft + 40 : tooltipLeft + width <= dockLeft).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('binds inward placement and arrow direction to the same side-specific CSS variables', () => {
+    const styles = buildLauncherStyles('main');
+    const defaultSide = styles.slice(styles.indexOf('--side-left:'), styles.indexOf(':host([data-side=right])'));
+    const rightSide = styles.slice(styles.indexOf(':host([data-side=right])'), styles.indexOf('.launcher-wrap'));
+    expect(defaultSide).toContain('--tip-left: calc(100% + 8px)');
+    expect(defaultSide).toContain('--tip-right: auto');
+    expect(defaultSide).toContain('--tip-origin: 0%');
+    expect(defaultSide).toContain('--side-sign: 1');
+    expect(rightSide).toContain('--tip-left: auto');
+    expect(rightSide).toContain('--tip-right: calc(100% + 8px)');
+    expect(rightSide).toContain('--tip-origin: 100%');
+    expect(rightSide).toContain('--side-sign: -1');
+  });
+
   it('main page :host does not pin dark theme tokens so site tokens can inherit', () => {
     const styles = buildLauncherStyles('main');
     const hostBlock = styles.slice(0, styles.indexOf('.launcher-wrap'));
@@ -91,7 +140,7 @@ describe('buildLauncherStyles', () => {
 
     expect(styles).toContain('var(--shadow-card,');
     expect(styles).toContain('var(--radius-md,');
-    expect(styles).toContain('calc(100vw - var(--side-offset) - var(--opposite-offset))');
+    expect(styles).toContain('max-width: max(0px, calc(100vw - var(--side-offset) - var(--opposite-offset) - 64px))');
     expect(styles).toContain('env(safe-area-inset-left');
     expect(styles).toContain('env(safe-area-inset-right');
   });
@@ -114,8 +163,56 @@ describe('mountLauncher greeting bubble', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     browser.reset();
     vi.useRealTimers();
+  });
+
+  it.each(['main', 'v4'] as const)('skips mobile greeting and its timer on %s without consuming the session', (page) => {
+    vi.useFakeTimers();
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+    const { shadow } = mountLauncherOnPage(page);
+    expect(getBubble(shadow)).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(browser.sessionData.has(LAUNCHER_BUBBLE_SESSION_KEY)).toBe(false);
+    expect(buildLauncherStyles(page)).toContain('@media (width < 480px)');
+    expect(buildLauncherStyles(page)).toContain('.launcher-bubble { display: none; }');
+    expect(window.matchMedia).toHaveBeenCalledWith('(width < 480px)');
+  });
+
+  it('hides and cancels the timer on resizing below 480px, never resurrecting the greeting', () => {
+    vi.useFakeTimers();
+    let change: (event: { matches: boolean }) => void = () => {};
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      addEventListener: (_type: string, listener: typeof change) => { change = listener; },
+    } as unknown as MediaQueryList);
+    const { shadow } = mountLauncherOnPage('main');
+    expect(vi.getTimerCount()).toBe(1);
+    change({ matches: true });
+    expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    change({ matches: false });
+    expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it.each(['pointerenter', 'mouseenter', 'focus', 'pointerdown', 'keydown'])('suppresses greeting on every launcher/dock %s before tooltip display', (event) => {
+    vi.useFakeTimers();
+    for (const index of [0, 1, 2, 3, 4, 5]) {
+      browser.sessionData.clear();
+      const { launcher, shadow } = mountLauncherOnPage('main');
+      const controls = [launcher, ...shadow.querySelector('.quick-dock')!.querySelectorAll('.quick-dock__button')];
+      controls[index].dispatchEvent(event);
+      expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+      expect(togglePanel).not.toHaveBeenCalled();
+    }
+  });
+
+  it.each(['main', 'v4'] as const)('synchronously suppresses programmatic panel opens and competing tooltips on %s', (page) => {
+    const styles = buildLauncherStyles(page);
+    expect(styles).toContain('.launcher-wrap:has(.launcher[aria-expanded="true"]) .launcher-bubble');
+    expect(styles).toContain('.launcher-wrap:has(.launcher:hover, .launcher:focus-visible, .quick-dock:hover, .quick-dock:focus-within) .launcher-bubble {\n  display: none;');
   });
 
   it.each(['left', 'right'] as const)('mirrors configured %s side onto the shadow host', (side) => {
@@ -170,6 +267,47 @@ describe('mountLauncher greeting bubble', () => {
     const { shadow } = mountLauncherOnPage('v4');
 
     expect(getBubble(shadow)).toBeNull();
+  });
+
+  it.each(['main', 'v4'] as const)('preserves the unseen session from mobile to a desktop mount on %s', (page) => {
+    vi.useFakeTimers();
+    const media = vi.spyOn(window, 'matchMedia');
+    media.mockReturnValueOnce({ matches: true } as MediaQueryList);
+    expect(getBubble(mountLauncherOnPage(page).shadow)).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+
+    media.mockReturnValue({ matches: false } as MediaQueryList);
+    expect(getBubble(mountLauncherOnPage(page).shadow)).not.toBeNull();
+    expect(vi.getTimerCount()).toBe(1);
+    expect(browser.sessionData.get(LAUNCHER_BUBBLE_SESSION_KEY)).toBe('1');
+  });
+
+  it.each(['main', 'v4'] as const)('keeps dismissal final across page variants after starting on %s', (page) => {
+    vi.useFakeTimers();
+    const { shadow } = mountLauncherOnPage(page);
+    expect(vi.getTimerCount()).toBe(1);
+    shadow.querySelector('.launcher-bubble__dismiss')!.click();
+    expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(togglePanel).not.toHaveBeenCalled();
+
+    const otherPage = page === 'main' ? 'v4' : 'main';
+    expect(getBubble(mountLauncherOnPage(otherPage).shadow)).toBeNull();
+    vi.advanceTimersByTime(LAUNCHER_BUBBLE_AUTO_HIDE_MS);
+    expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(['main', 'v4'] as const)('cancels auto-hide synchronously before lazy panel opening on %s', async (page) => {
+    vi.useFakeTimers();
+    const { launcher, shadow } = mountLauncherOnPage(page);
+    expect(vi.getTimerCount()).toBe(1);
+    launcher.click();
+    expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.waitFor(() => expect(togglePanel).toHaveBeenCalledTimes(1));
+    expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+    expect(browser.sessionData.get(LAUNCHER_BUBBLE_SESSION_KEY)).toBe('1');
   });
 
   it('hides the bubble when dismiss is clicked', () => {
