@@ -1,6 +1,6 @@
 import { matchCompactMode, resolveCompactStyles } from './compact';
 import { CHATBOT_CONFIG } from './config';
-import { createDock, dockStyles } from './dock';
+import { createDock, dockStyles, mountMoreToggle } from './dock';
 
 const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
 const LAUNCHER_BUBBLE_AUTO_HIDE_MS = 8000;
@@ -399,9 +399,11 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
   svg.appendChild(path);
   button.appendChild(svg);
 
+  let collapseMore = (): void => {};
   const bubbleState = maybeMountLauncherBubble(wrap);
 
   button.addEventListener('click', () => {
+    collapseMore();
     if (bubbleState !== undefined && !bubbleState.bubble.hasAttribute('hidden')) {
       hideLauncherBubble(bubbleState);
     } else if (!launcherBubbleSeen()) {
@@ -413,7 +415,9 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
   });
 
   wrap.appendChild(button);
-  wrap.appendChild(createDock(page));
+  const dock = createDock(page);
+  wrap.appendChild(dock);
+  collapseMore = mountMoreToggle(wrap, dock);
   if (bubbleState !== undefined) {
     const dismissBubble = (): void => hideLauncherBubble(bubbleState);
     for (const control of [button, ...wrap.querySelectorAll('.quick-dock__button')]) {

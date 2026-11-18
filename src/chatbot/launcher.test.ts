@@ -183,17 +183,34 @@ describe('mountLauncher greeting bubble', () => {
   it('hides and cancels the timer on entering compact mode, never resurrecting the greeting', () => {
     vi.useFakeTimers();
     let change: (event: { matches: boolean }) => void = () => {};
+    const changeListeners: (typeof change)[] = [];
     vi.spyOn(window, 'matchMedia').mockReturnValue({
       matches: false,
-      addEventListener: (_type: string, listener: typeof change) => { change = listener; },
+      addEventListener: (_type: string, listener: typeof change) => { changeListeners.push(listener); },
     } as unknown as MediaQueryList);
     const { shadow } = mountLauncherOnPage('main');
+    change = (event) => changeListeners.forEach((listener) => listener(event));
     expect(vi.getTimerCount()).toBe(1);
     change({ matches: true });
     expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
     change({ matches: false });
     expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('mounts the More options arrow after the chat icon and collapses the dock when chat opens', () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+    Object.assign(document, { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+    const { launcher, shadow } = mountLauncherOnPage('main');
+    const more = shadow.querySelector('.quick-dock__more')!;
+    const dock = shadow.querySelector('.quick-dock')!;
+    expect(more.getAttribute('aria-controls')).toBe(dock.id);
+    more.click();
+    expect(dock.hasAttribute('data-open')).toBe(true);
+    launcher.click();
+    expect(dock.hasAttribute('data-open')).toBe(false);
+    expect(more.getAttribute('aria-expanded')).toBe('false');
+    expect(buildLauncherStyles('main')).toContain('.quick-dock__more { display: none; }');
   });
 
   it.each(['pointerenter', 'mouseenter', 'focus', 'pointerdown', 'keydown'])('suppresses greeting on every launcher/dock %s before tooltip display', (event) => {

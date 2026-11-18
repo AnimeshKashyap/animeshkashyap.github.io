@@ -102,3 +102,6 @@ Today ranking is entirely MiniSearch + synonym/entity logic in `search.ts`. To a
 3. Load the embedding model only inside that module (same lazy-import pattern as `panel` → `engine` → MiniSearch) so the launcher chunk stays small.
 
 `ChatEngine.ask` can stay async; no server is required if you use a client-side model.
+### Compact "More options" toggle (17c)
+
+In compact mode (`COMPACT_QUERY`) the launcher column shows only the chat icon and a round up-arrow `More options` button (`aria-expanded`, `aria-controls` → `#portfolio-chat-dock`) on the configured `launcherSide`. Tapping it expands the same five dock icons (same size, gap and labels as desktop) as a staggered vertical stack above it; the arrow rotates 180°. Collapse happens on arrow tap, outside `pointerdown`, Esc, action select, or chat open; the document `pointerdown`/`keydown` listeners exist only while expanded. Collapsed icons are `inert`, `aria-hidden` and `tabindex=-1`. Tooltips are hidden in compact mode; motion is skipped under `prefers-reduced-motion`. Desktop/tablet is unchanged (arrow `display: none`). Tests mock `matchMedia`; no browser verification was done.

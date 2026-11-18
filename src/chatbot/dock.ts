@@ -1,4 +1,4 @@
-import { resolveCompactStyles } from './compact';
+import { matchCompactMode, resolveCompactStyles } from './compact';
 import type { ActionId } from './types';
 
 const actions: { id: ActionId; label: string; path: string }[] = [
@@ -68,6 +68,27 @@ export const dockStyles = resolveCompactStyles(`
   .quick-dock__button::after { transition: none; }
 }
 .quick-dock__button:hover::after, .quick-dock__button:focus-visible::after { opacity: 1; }
+.quick-dock__more { display: none; }
+@media (--chatbot-compact) {
+  .quick-dock__more {
+    display: grid; place-items: center; box-sizing: border-box; flex-shrink: 0;
+    width: 40px; height: 40px; padding: 0; border: none; border-radius: 50%; cursor: pointer;
+    color: var(--text-primary, #eef1f8); background: var(--bg-raised, #0b0f1a);
+    box-shadow: inset 0 0 0 1px var(--border, rgba(255,255,255,.12)), var(--shadow-card, 0 8px 24px rgba(0,0,0,.35));
+  }
+  .quick-dock__more:focus-visible { outline: 2px solid var(--accent-cyan, #5eead4); outline-offset: 3px; }
+  .quick-dock__more svg { width: 20px; height: 20px; transition: transform 240ms ease; }
+  .quick-dock__more[aria-expanded="true"] svg { transform: rotate(180deg); }
+  .quick-dock { bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 116px); --dock-x: 0px; }
+  .quick-dock:not([data-open]) { visibility: hidden; pointer-events: none; transition: visibility 0s 240ms; }
+  .quick-dock:not([data-open]) .quick-dock__button { transform: none; opacity: 0; }
+  .quick-dock[data-open] .quick-dock__button { transform: translateY(calc(var(--index) * -46px)); opacity: 1; transition-delay: calc(var(--index) * 30ms); }
+  .quick-dock__button { transition: transform 240ms ease, opacity 240ms ease; }
+  .quick-dock__button::after { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-dock__more svg, .quick-dock__button { transition: none !important; }
+}
 `);
 
 export function createDock(page: 'main' | 'v4'): HTMLElement {
@@ -102,4 +123,62 @@ export function createDock(page: 'main' | 'v4'): HTMLElement {
     dock.appendChild(button);
   }
   return dock;
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** Compact-only "More options" toggle; returns a collapse function. */
+export function mountMoreToggle(wrap: HTMLElement, dock: HTMLElement): () => void {
+  const compact = matchCompactMode();
+  dock.id = 'portfolio-chat-dock';
+  const more = document.createElement('button');
+  more.type = 'button';
+  more.className = 'quick-dock__more';
+  more.setAttribute('aria-label', 'More options');
+  more.setAttribute('aria-expanded', 'false');
+  more.setAttribute('aria-controls', dock.id);
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false' })) svg.setAttribute(k, v);
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', 'm6 15 6-6 6 6');
+  svg.appendChild(path);
+  more.appendChild(svg);
+
+  const onPointerDown = (e: Event): void => {
+    const t = e.composedPath();
+    if (!t.includes(dock) && !t.includes(more)) setOpen(false);
+  };
+  const onKeyDown = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') setOpen(false);
+  };
+  const sync = (open: boolean): void => {
+    const hidden = compact.matches && !open;
+    if (hidden) dock.setAttribute('inert', '');
+    else dock.removeAttribute('inert');
+    if (hidden) dock.setAttribute('aria-hidden', 'true');
+    else dock.removeAttribute('aria-hidden');
+    for (const b of dock.querySelectorAll('button')) {
+      if (hidden) b.setAttribute('tabindex', '-1');
+      else b.removeAttribute('tabindex');
+    }
+  };
+  function setOpen(open: boolean): void {
+    if (open === dock.hasAttribute('data-open')) return;
+    if (open) dock.setAttribute('data-open', '');
+    else dock.removeAttribute('data-open');
+    more.setAttribute('aria-expanded', String(open));
+    sync(open);
+    document.removeEventListener('pointerdown', onPointerDown);
+    document.removeEventListener('keydown', onKeyDown);
+    if (open) {
+      document.addEventListener('pointerdown', onPointerDown);
+      document.addEventListener('keydown', onKeyDown);
+    }
+  }
+  more.addEventListener('click', () => setOpen(!dock.hasAttribute('data-open')));
+  for (const b of dock.querySelectorAll('button')) b.addEventListener('click', () => setOpen(false));
+  compact.addEventListener?.('change', () => sync(dock.hasAttribute('data-open')));
+  sync(false);
+  wrap.appendChild(more);
+  return () => setOpen(false);
 }
