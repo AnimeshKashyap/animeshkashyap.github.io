@@ -175,25 +175,51 @@ describe('mountLauncher greeting bubble', () => {
     expect(getBubble(shadow)).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
     expect(browser.sessionData.has(LAUNCHER_BUBBLE_SESSION_KEY)).toBe(false);
-    expect(buildLauncherStyles(page)).toContain('@media (width < 480px)');
+    expect(buildLauncherStyles(page)).toContain('@media (max-width: 479px), (max-height: 499px)');
     expect(buildLauncherStyles(page)).toContain('.launcher-bubble { display: none; }');
-    expect(window.matchMedia).toHaveBeenCalledWith('(width < 480px)');
+    expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 479px), (max-height: 499px)');
   });
 
-  it('hides and cancels the timer on resizing below 480px, never resurrecting the greeting', () => {
+  it('hides and cancels the timer on entering compact mode, never resurrecting the greeting', () => {
     vi.useFakeTimers();
     let change: (event: { matches: boolean }) => void = () => {};
+    const changeListeners: (typeof change)[] = [];
     vi.spyOn(window, 'matchMedia').mockReturnValue({
       matches: false,
-      addEventListener: (_type: string, listener: typeof change) => { change = listener; },
+      addEventListener: (_type: string, listener: typeof change) => { changeListeners.push(listener); },
     } as unknown as MediaQueryList);
     const { shadow } = mountLauncherOnPage('main');
+    change = (event) => changeListeners.forEach((listener) => listener(event));
     expect(vi.getTimerCount()).toBe(1);
     change({ matches: true });
     expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
     change({ matches: false });
     expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('mounts the More options arrow after the chat icon and collapses the dock when chat opens', () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+    Object.assign(document, { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+    const { launcher, shadow } = mountLauncherOnPage('main');
+    const more = shadow.querySelector('.quick-dock__more')!;
+    const dock = shadow.querySelector('.quick-dock')!;
+    expect(more.getAttribute('aria-controls')).toBe(dock.id);
+    more.click();
+    expect(dock.hasAttribute('data-open')).toBe(true);
+    launcher.click();
+    expect(dock.hasAttribute('data-open')).toBe(false);
+    expect(more.getAttribute('aria-expanded')).toBe('false');
+    expect(buildLauncherStyles('main')).toContain('.quick-dock__more { display: none; }');
+  });
+
+  it('hides the whole compact launcher column (chat icon, dock, arrow) while the chat is open', () => {
+    const css = buildLauncherStyles('main');
+    const compact = css.slice(css.indexOf('@media (max-width: 479px), (max-height: 499px)'));
+    expect(compact).toMatch(/\.launcher-wrap:has\(\.launcher\[aria-expanded="true"\]\)\s*\{\s*display:\s*none;/);
+    const { shadow } = mountLauncherOnPage('main');
+    const wrap = shadow.querySelector('.launcher-wrap')!;
+    for (const sel of ['.launcher', '.quick-dock', '.quick-dock__more']) expect(wrap.querySelector(sel)).not.toBeNull();
   });
 
   it.each(['pointerenter', 'mouseenter', 'focus', 'pointerdown', 'keydown'])('suppresses greeting on every launcher/dock %s before tooltip display', (event) => {

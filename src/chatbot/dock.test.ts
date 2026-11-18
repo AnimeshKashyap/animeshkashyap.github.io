@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDock, dockStyles } from './dock';
+import { COMPACT_QUERY } from './compact';
+import { createDock, dockStyles, mountMoreToggle } from './dock';
 import { runAction } from './engine/actions';
 import { installBrowserGlobals, type BrowserGlobalsHandle, type MockElement } from './panel/fixtures/browser-globals';
 
@@ -104,5 +105,202 @@ describe('quick action dock', () => {
     expect(dockStyles).toContain('.quick-dock, .quick-dock__button { transition: none; }');
     expect(dockStyles).not.toContain('top: calc(100% + 8px); bottom: auto');
     expect(dockStyles).toContain('.quick-dock__button::after { transition: none; }');
+  });
+
+  describe('compact more-options toggle', () => {
+    let docListeners: Map<string, Set<(e: unknown) => void>>;
+    const setup = (compact = true) => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: compact } as MediaQueryList);
+      docListeners = new Map();
+      Object.assign(document, {
+        addEventListener: (t: string, l: (e: unknown) => void) => {
+          docListeners.set(t, (docListeners.get(t) ?? new Set()).add(l));
+        },
+        removeEventListener: (t: string, l: (e: unknown) => void) => { docListeners.get(t)?.delete(l); },
+      });
+      const wrap = document.createElement('div') as unknown as MockElement;
+      const dock = createDock('main') as unknown as MockElement;
+      wrap.appendChild(dock);
+      mountMoreToggle(wrap as unknown as HTMLElement, dock as unknown as HTMLElement);
+      const more = wrap.querySelector('.quick-dock__more')!;
+      return { dock, more };
+    };
+    const fire = (type: string, event: object) => { for (const l of [...(docListeners.get(type) ?? [])]) l(event); };
+    afterEach(() => vi.restoreAllMocks());
+
+    it('resets the dock on breakpoint flips and leaves no document listeners', () => {
+      const changes = new Set<() => void>();
+      const mq = { matches: true, addEventListener: (_: string, l: () => void) => changes.add(l) };
+      const flip = (matches: boolean) => { mq.matches = matches; for (const l of changes) l(); };
+      const { dock, more } = setup();
+      vi.spyOn(window, 'matchMedia').mockReturnValue(mq as unknown as MediaQueryList);
+      const wrap = document.createElement('div') as unknown as MockElement;
+      const d = createDock('main') as unknown as MockElement;
+      wrap.appendChild(d);
+      mountMoreToggle(wrap as unknown as HTMLElement, d as unknown as HTMLElement);
+      const arrow = wrap.querySelector('.quick-dock__more')!;
+      arrow.click();
+      expect(d.hasAttribute('data-open')).toBe(true);
+      flip(false);
+      expect(d.hasAttribute('data-open')).toBe(false);
+      expect(arrow.getAttribute('aria-expanded')).toBe('false');
+      expect(d.hasAttribute('inert')).toBe(false);
+      expect(d.hasAttribute('aria-hidden')).toBe(false);
+      for (const b of d.querySelectorAll('.quick-dock__button')) expect(b.hasAttribute('tabindex')).toBe(false);
+      expect(docListeners.get('pointerdown')?.size ?? 0).toBe(0);
+      expect(docListeners.get('keydown')?.size ?? 0).toBe(0);
+      flip(true);
+      expect(d.hasAttribute('data-open')).toBe(false);
+      expect(d.hasAttribute('inert')).toBe(true);
+      expect(d.getAttribute('aria-hidden')).toBe('true');
+      for (const b of d.querySelectorAll('.quick-dock__button')) expect(b.getAttribute('tabindex')).toBe('-1');
+      expect(dock).toBeDefined();
+      expect(more).toBeDefined();
+    });
+
+    it('follows the real compact query for height-only switches without stuck state or leaked listeners', () => {
+      const changes = new Set<() => void>();
+      let size = { w: 800, h: 400 };
+      const mq = {
+        get matches() { return size.w <= 479 || size.h <= 499; },
+        addEventListener: (_: string, l: () => void) => changes.add(l),
+        removeEventListener: (_: string, l: () => void) => changes.delete(l),
+      };
+      const resize = (w: number, h: number) => { size = { w, h }; for (const l of [...changes]) l(); };
+      setup();
+      const mm = vi.spyOn(window, 'matchMedia').mockReturnValue(mq as unknown as MediaQueryList);
+      const wrap = document.createElement('div') as unknown as MockElement;
+      const d = createDock('main') as unknown as MockElement;
+      wrap.appendChild(d);
+      mountMoreToggle(wrap as unknown as HTMLElement, d as unknown as HTMLElement);
+      const arrow = wrap.querySelector('.quick-dock__more')!;
+      expect(mm).toHaveBeenCalledWith(COMPACT_QUERY);
+      expect(mq.matches).toBe(true);
+      expect(d.hasAttribute('inert')).toBe(true);
+      arrow.click();
+      expect(d.hasAttribute('data-open')).toBe(true);
+      resize(800, 600);
+      expect(mq.matches).toBe(false);
+      expect(d.hasAttribute('data-open')).toBe(false);
+      expect(d.hasAttribute('inert')).toBe(false);
+      expect(arrow.getAttribute('aria-expanded')).toBe('false');
+      expect(docListeners.get('pointerdown')?.size ?? 0).toBe(0);
+      expect(docListeners.get('keydown')?.size ?? 0).toBe(0);
+      resize(800, 400);
+      expect(d.hasAttribute('data-open')).toBe(false);
+      expect(d.hasAttribute('inert')).toBe(true);
+      arrow.click();
+      resize(800, 600);
+      resize(800, 400);
+      expect(d.hasAttribute('data-open')).toBe(false);
+      expect(docListeners.get('keydown')?.size ?? 0).toBe(0);
+    });
+
+    it('renders an accessible arrow wired to the dock and hides collapsed icons', () => {
+      const { dock, more } = setup();
+      expect(more.getAttribute('aria-label')).toBe('More options');
+      expect(more.getAttribute('aria-expanded')).toBe('false');
+      expect(more.getAttribute('aria-controls')).toBe(dock.id);
+      expect(more.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+      expect(dock.hasAttribute('inert')).toBe(true);
+      expect(dock.getAttribute('aria-hidden')).toBe('true');
+      for (const b of dock.querySelectorAll('.quick-dock__button')) expect(b.getAttribute('tabindex')).toBe('-1');
+      expect(docListeners.size).toBe(0);
+    });
+
+    it('expands on tap and collapses on arrow, outside pointerdown, Esc and action select', async () => {
+      const { dock, more } = setup();
+      const open = () => { more.click(); expect(more.getAttribute('aria-expanded')).toBe('true'); expect(dock.hasAttribute('data-open')).toBe(true); expect(dock.hasAttribute('inert')).toBe(false); expect(dock.querySelector('button')?.hasAttribute('tabindex')).toBe(false); };
+      const closed = () => { expect(more.getAttribute('aria-expanded')).toBe('false'); expect(dock.hasAttribute('data-open')).toBe(false); expect(dock.hasAttribute('inert')).toBe(true); expect(docListeners.get('pointerdown')?.size ?? 0).toBe(0); expect(docListeners.get('keydown')?.size ?? 0).toBe(0); };
+      open(); more.click(); closed();
+      open(); fire('pointerdown', { composedPath: () => [dock] }); expect(dock.hasAttribute('data-open')).toBe(true);
+      fire('pointerdown', { composedPath: () => [more] }); expect(dock.hasAttribute('data-open')).toBe(true);
+      fire('pointerdown', { composedPath: () => [document.body] }); closed();
+      open(); fire('keydown', { key: 'Enter' }); expect(dock.hasAttribute('data-open')).toBe(true);
+      fire('keydown', { key: 'Escape' }); closed();
+      open(); dock.querySelectorAll('.quick-dock__button')[1]!.click(); closed();
+      await vi.waitFor(() => expect(runAction).toHaveBeenCalledWith('email', { page: 'main' }));
+    });
+
+    it('registers exactly one document listener per type across repeated open/close cycles', () => {
+      const { dock, more } = setup();
+      for (let i = 0; i < 4; i++) {
+        more.click();
+        expect(docListeners.get('pointerdown')?.size).toBe(1);
+        expect(docListeners.get('keydown')?.size).toBe(1);
+        more.click();
+        expect(docListeners.get('pointerdown')?.size ?? 0).toBe(0);
+        expect(docListeners.get('keydown')?.size ?? 0).toBe(0);
+      }
+      expect(dock.hasAttribute('data-open')).toBe(false);
+    });
+
+    it('returns an idempotent collapse function that is a no-op when already collapsed', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+      docListeners = new Map();
+      Object.assign(document, {
+        addEventListener: (t: string, l: (e: unknown) => void) => { docListeners.set(t, (docListeners.get(t) ?? new Set()).add(l)); },
+        removeEventListener: (t: string, l: (e: unknown) => void) => { docListeners.get(t)?.delete(l); },
+      });
+      const wrap = document.createElement('div') as unknown as MockElement;
+      const dock = createDock('main') as unknown as MockElement;
+      wrap.appendChild(dock);
+      const collapse = mountMoreToggle(wrap as unknown as HTMLElement, dock as unknown as HTMLElement);
+      const more = wrap.querySelector('.quick-dock__more')!;
+      collapse();
+      collapse();
+      expect(dock.hasAttribute('data-open')).toBe(false);
+      expect(more.getAttribute('aria-expanded')).toBe('false');
+      expect(docListeners.size).toBe(0);
+      more.click();
+      expect(dock.hasAttribute('data-open')).toBe(true);
+      collapse();
+      collapse();
+      expect(dock.hasAttribute('data-open')).toBe(false);
+      expect(dock.hasAttribute('inert')).toBe(true);
+      expect(dock.getAttribute('aria-hidden')).toBe('true');
+      expect(docListeners.get('pointerdown')?.size ?? 0).toBe(0);
+      expect(docListeners.get('keydown')?.size ?? 0).toBe(0);
+    });
+
+    it('treats a pointerdown that starts inside a dock icon as inside and ignores pointerdown/Esc while collapsed', () => {
+      const { dock, more } = setup();
+      const icon = dock.querySelectorAll('.quick-dock__button')[2]!;
+      fire('pointerdown', { composedPath: () => [document.body] });
+      fire('keydown', { key: 'Escape' });
+      expect(dock.hasAttribute('data-open')).toBe(false);
+      more.click();
+      fire('pointerdown', { composedPath: () => [icon, dock, document.body] });
+      expect(dock.hasAttribute('data-open')).toBe(true);
+      fire('pointerdown', { composedPath: () => [] });
+      expect(dock.hasAttribute('data-open')).toBe(false);
+    });
+
+    it('gives each action the compact collapse and keeps runAction wired for every icon', async () => {
+      const { dock, more } = setup();
+      const buttons = dock.querySelectorAll('.quick-dock__button');
+      const ids = ['cv', 'email', 'linkedin', 'github', 'projects'];
+      for (const [index, id] of ids.entries()) {
+        more.click();
+        buttons[index]!.click();
+        expect(dock.hasAttribute('data-open')).toBe(false);
+        expect(more.getAttribute('aria-expanded')).toBe('false');
+        await vi.waitFor(() => expect(runAction).toHaveBeenCalledWith(id, { page: 'main' }));
+      }
+      expect(runAction).toHaveBeenCalledTimes(5);
+    });
+
+    it('does not throw when the media query list lacks addEventListener', () => {
+      expect(() => setup()).not.toThrow();
+    });
+
+    it('leaves the dock interactive outside compact mode and styles hide tooltips on compact', () => {
+      const { dock } = setup(false);
+      expect(dock.hasAttribute('inert')).toBe(false);
+      expect(dock.querySelector('button')?.hasAttribute('tabindex')).toBe(false);
+      expect(dockStyles).toContain('.quick-dock__more { display: none; }');
+      expect(dockStyles).toContain('.quick-dock__button::after { display: none; }');
+      expect(dockStyles).toContain('.quick-dock__more[aria-expanded="true"] svg { transform: rotate(180deg); }');
+    });
   });
 });

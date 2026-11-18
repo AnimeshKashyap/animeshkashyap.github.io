@@ -1,5 +1,6 @@
+import { matchCompactMode, resolveCompactStyles } from './compact';
 import { CHATBOT_CONFIG } from './config';
-import { createDock, dockStyles } from './dock';
+import { createDock, dockStyles, mountMoreToggle } from './dock';
 
 const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
 const LAUNCHER_BUBBLE_AUTO_HIDE_MS = 8000;
@@ -171,8 +172,9 @@ const LAUNCHER_STYLE_BODY = `
   visibility: hidden;
 }
 
-@media (width < 480px) {
+@media (--chatbot-compact) {
   .launcher-bubble { display: none; }
+  .launcher-wrap:has(.launcher[aria-expanded="true"]) { display: none; }
 }
 
 /* Hide synchronously, including programmatic panel opens and tooltip-producing focus. */
@@ -291,7 +293,7 @@ function launcherHostStyles(page: 'main' | 'v4'): string {
 }
 
 export function buildLauncherStyles(page: 'main' | 'v4'): string {
-  return `${launcherHostStyles(page)}${LAUNCHER_STYLE_BODY}${dockStyles}`;
+  return resolveCompactStyles(`${launcherHostStyles(page)}${LAUNCHER_STYLE_BODY}${dockStyles}`);
 }
 
 function launcherBubbleSeen(): boolean {
@@ -325,8 +327,8 @@ function hideLauncherBubble(state: LauncherBubbleState): void {
 }
 
 function maybeMountLauncherBubble(wrap: HTMLElement): LauncherBubbleState | undefined {
-  const mobile = window.matchMedia('(width < 480px)');
-  if (mobile.matches || launcherBubbleSeen()) {
+  const compact = matchCompactMode();
+  if (compact.matches || launcherBubbleSeen()) {
     return undefined;
   }
 
@@ -356,7 +358,7 @@ function maybeMountLauncherBubble(wrap: HTMLElement): LauncherBubbleState | unde
   };
 
   dismiss.addEventListener('click', dismissBubble);
-  mobile.addEventListener?.('change', (event) => {
+  compact.addEventListener?.('change', (event) => {
     if (event.matches) dismissBubble();
   });
 
@@ -397,9 +399,11 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
   svg.appendChild(path);
   button.appendChild(svg);
 
+  let collapseMore = (): void => {};
   const bubbleState = maybeMountLauncherBubble(wrap);
 
   button.addEventListener('click', () => {
+    collapseMore();
     if (bubbleState !== undefined && !bubbleState.bubble.hasAttribute('hidden')) {
       hideLauncherBubble(bubbleState);
     } else if (!launcherBubbleSeen()) {
@@ -411,7 +415,9 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
   });
 
   wrap.appendChild(button);
-  wrap.appendChild(createDock(page));
+  const dock = createDock(page);
+  wrap.appendChild(dock);
+  collapseMore = mountMoreToggle(wrap, dock);
   if (bubbleState !== undefined) {
     const dismissBubble = (): void => hideLauncherBubble(bubbleState);
     for (const control of [button, ...wrap.querySelectorAll('.quick-dock__button')]) {
