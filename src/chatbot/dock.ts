@@ -2,11 +2,11 @@ import { matchCompactMode, resolveCompactStyles } from './compact';
 import type { ActionId } from './types';
 
 const actions: { id: ActionId; label: string; path: string }[] = [
-  { id: 'cv', label: 'Download resume', path: 'M6 3h8l4 4v14H6z M14 3v5h4 M12 11v6m-3-3 3 3 3-3' },
-  { id: 'email', label: 'Email Animesh', path: 'M3 5h18v14H3z M3 6l9 7 9-7' },
+  { id: 'cv', label: 'Get CV', path: 'M6 3h8l4 4v14H6z M14 3v5h4 M12 11v6m-3-3 3 3 3-3' },
+  { id: 'email', label: 'Email', path: 'M3 5h18v14H3z M3 6l9 7 9-7' },
   { id: 'linkedin', label: 'LinkedIn', path: 'M5 9v10 M5 5v.1 M10 19V9m0 4c0-5 8-5 8 0v6' },
   { id: 'github', label: 'GitHub', path: 'M9 19c-5 1-5-2-7-2m14 4v-3c0-1-.4-1.7-1-2 3-.3 5-1.5 5-5a4 4 0 0 0-1-3c.2-1 .1-2-.3-3-1 0-2 .5-3 1a11 11 0 0 0-6 0C9 5.5 8 5 7 5c-.4 1-.5 2-.3 3a4 4 0 0 0-1 3c0 3.5 2 4.7 5 5-.6.3-1 1-1 2v3' },
-  { id: 'projects', label: 'View projects', path: 'M3 6h7l2 2h9v11H3z M3 8h18' },
+  { id: 'projects', label: 'Projects', path: 'M3 6h7l2 2h9v11H3z M3 8h18' },
 ];
 
 export const dockStyles = resolveCompactStyles(`
@@ -15,6 +15,8 @@ export const dockStyles = resolveCompactStyles(`
   left: var(--side-left); right: var(--side-right);
   bottom: calc(max(44px, env(safe-area-inset-bottom, 0px)) + 66px);
   width: 46px; height: 46px;
+  /* Open chat: the five buttons span the panel's full width (matches the panel's width clamp). */
+  --pitch: calc((min(380px, 100vw - var(--side-offset) - var(--opposite-offset)) - 46px) / 4);
   transform: translate(calc(var(--side-sign) * var(--dock-x, 5px)), var(--dock-y, 0px));
   transition: transform 240ms ease, opacity 240ms ease;
 }
@@ -28,7 +30,7 @@ export const dockStyles = resolveCompactStyles(`
   --dock-x: 0px;
   --dock-y: calc(max(44px, env(safe-area-inset-bottom, 0px)) + 66px - 100dvh + max(16px, env(safe-area-inset-top, 0px)) + 46px);
 }
-.launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button { transform: translateX(calc(var(--side-sign) * var(--index) * 58px)); }
+.launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button { transform: translateX(calc(var(--side-sign) * var(--index) * var(--pitch))); }
 @media (--chatbot-desktop) {
   .launcher[aria-expanded="true"] ~ .quick-dock {
     --dock-x: 0px;
@@ -61,7 +63,7 @@ export const dockStyles = resolveCompactStyles(`
   border: 1px solid var(--border, rgba(255,255,255,.12));
 }
 .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button::after {
-  left: calc(var(--tip-origin) - var(--side-sign) * var(--index) * 58px); right: auto; top: auto; bottom: calc(100% + 8px); transform: translateX(calc(-1 * var(--tip-origin)));
+  left: 50%; right: auto; top: auto; bottom: calc(100% + 8px); transform: translateX(-50%);
   max-width: calc(100vw - var(--side-offset) - var(--opposite-offset));
 }
 @media (prefers-reduced-motion: reduce) {

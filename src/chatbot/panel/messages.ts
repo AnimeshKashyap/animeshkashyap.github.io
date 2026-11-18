@@ -9,6 +9,8 @@ export type MessageHandlers = {
 export type AppendBotMessageOptions = {
   reveal?: boolean;
   signal?: AbortSignal;
+  /** Where the follow-up query chips go; without it they render under the reply. */
+  chipsHost?: HTMLElement;
 };
 
 const REVEAL_DELAY_MS = 500;
@@ -139,7 +141,11 @@ export function clearMessageLog(log: HTMLElement): void {
   log.replaceChildren();
 }
 
-export function appendWelcomeMessage(log: HTMLElement, handlers: MessageHandlers): void {
+export function appendWelcomeMessage(
+  log: HTMLElement,
+  handlers: MessageHandlers,
+  chipsHost?: HTMLElement,
+): void {
   const row = document.createElement('div');
   row.className = 'chat-msg chat-msg--bot';
 
@@ -158,7 +164,8 @@ export function appendWelcomeMessage(log: HTMLElement, handlers: MessageHandlers
     );
   }
 
-  row.appendChild(suggestions);
+  if (chipsHost) chipsHost.replaceChildren(suggestions);
+  else row.appendChild(suggestions);
   log.appendChild(row);
   scrollLogToBottom(log);
 }
@@ -286,7 +293,8 @@ export async function appendBotMessage(
     if (staged) await pause(FOLLOW_UP_DELAY_MS);
     if (signal?.aborted) return;
     if (staged) followUps.classList.add('chat-msg--enter');
-    row.appendChild(followUps);
+    if (options.chipsHost) options.chipsHost.replaceChildren(followUps);
+    else row.appendChild(followUps);
     scrollLogToBottom(log);
   }
 }

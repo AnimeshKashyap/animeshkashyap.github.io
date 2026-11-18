@@ -158,6 +158,6 @@ describe('autocomplete sentence corpus', () => {
 
   it('reports the current grounded corpus size', () => {
     console.info(`Autocomplete corpus: ${SUGGESTION_CORPUS.length} sentences`);
-    expect(SUGGESTION_CORPUS.length).toBe(36);
+    expect(SUGGESTION_CORPUS.length).toBe(37);
   });
 });

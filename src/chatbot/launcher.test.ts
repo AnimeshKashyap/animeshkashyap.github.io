@@ -196,6 +196,7 @@ describe('mountLauncher greeting bubble', () => {
     const styles = buildLauncherStyles('main');
     expect(styles).toContain('.launcher-wrap[data-tips] .launcher[aria-expanded="false"]::after');
     expect(styles).toMatch(/\.launcher-bubble \{[^}]*z-index: 2;/);
+    expect(styles).toContain('.launcher-wrap:has(.launcher[aria-expanded="true"]) { z-index: 60; }');
   });
 
   it('hides and cancels the timer on entering compact mode, never resurrecting the greeting', () => {
