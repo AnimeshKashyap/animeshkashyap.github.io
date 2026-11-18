@@ -31,7 +31,7 @@
   height: 32px;
   border-radius: 9px;
   background: var(--accent-gradient);
-  color: #05070d;
+  color: var(--on-accent, #05070d);
   font-size: 0.78rem;
   font-weight: 700;
 }
