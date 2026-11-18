@@ -99,6 +99,20 @@ describe('buildLauncherStyles', () => {
     }
   });
 
+  it('binds inward placement and arrow direction to the same side-specific CSS variables', () => {
+    const styles = buildLauncherStyles('main');
+    const defaultSide = styles.slice(styles.indexOf('--side-left:'), styles.indexOf(':host([data-side=right])'));
+    const rightSide = styles.slice(styles.indexOf(':host([data-side=right])'), styles.indexOf('.launcher-wrap'));
+    expect(defaultSide).toContain('--tip-left: calc(100% + 8px)');
+    expect(defaultSide).toContain('--tip-right: auto');
+    expect(defaultSide).toContain('--tip-origin: 0%');
+    expect(defaultSide).toContain('--side-sign: 1');
+    expect(rightSide).toContain('--tip-left: auto');
+    expect(rightSide).toContain('--tip-right: calc(100% + 8px)');
+    expect(rightSide).toContain('--tip-origin: 100%');
+    expect(rightSide).toContain('--side-sign: -1');
+  });
+
   it('main page :host does not pin dark theme tokens so site tokens can inherit', () => {
     const styles = buildLauncherStyles('main');
     const hostBlock = styles.slice(0, styles.indexOf('.launcher-wrap'));
@@ -253,6 +267,47 @@ describe('mountLauncher greeting bubble', () => {
     const { shadow } = mountLauncherOnPage('v4');
 
     expect(getBubble(shadow)).toBeNull();
+  });
+
+  it.each(['main', 'v4'] as const)('preserves the unseen session from mobile to a desktop mount on %s', (page) => {
+    vi.useFakeTimers();
+    const media = vi.spyOn(window, 'matchMedia');
+    media.mockReturnValueOnce({ matches: true } as MediaQueryList);
+    expect(getBubble(mountLauncherOnPage(page).shadow)).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+
+    media.mockReturnValue({ matches: false } as MediaQueryList);
+    expect(getBubble(mountLauncherOnPage(page).shadow)).not.toBeNull();
+    expect(vi.getTimerCount()).toBe(1);
+    expect(browser.sessionData.get(LAUNCHER_BUBBLE_SESSION_KEY)).toBe('1');
+  });
+
+  it.each(['main', 'v4'] as const)('keeps dismissal final across page variants after starting on %s', (page) => {
+    vi.useFakeTimers();
+    const { shadow } = mountLauncherOnPage(page);
+    expect(vi.getTimerCount()).toBe(1);
+    shadow.querySelector('.launcher-bubble__dismiss')!.click();
+    expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(togglePanel).not.toHaveBeenCalled();
+
+    const otherPage = page === 'main' ? 'v4' : 'main';
+    expect(getBubble(mountLauncherOnPage(otherPage).shadow)).toBeNull();
+    vi.advanceTimersByTime(LAUNCHER_BUBBLE_AUTO_HIDE_MS);
+    expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(['main', 'v4'] as const)('cancels auto-hide synchronously before lazy panel opening on %s', async (page) => {
+    vi.useFakeTimers();
+    const { launcher, shadow } = mountLauncherOnPage(page);
+    expect(vi.getTimerCount()).toBe(1);
+    launcher.click();
+    expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.waitFor(() => expect(togglePanel).toHaveBeenCalledTimes(1));
+    expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+    expect(browser.sessionData.get(LAUNCHER_BUBBLE_SESSION_KEY)).toBe('1');
   });
 
   it('hides the bubble when dismiss is clicked', () => {
