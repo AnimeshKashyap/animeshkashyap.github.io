@@ -145,3 +145,5 @@ stage.svg.style.cursor = 'pointer'
 stage.svg.addEventListener('click', togglePause)
 
 rafId = requestAnimationFrame(frame)
+
+;(typeof requestIdleCallback === 'function' ? requestIdleCallback : (cb: IdleRequestCallback) => setTimeout(() => cb({ didTimeout: true, timeRemaining: () => 0 }), 1))(() => import('../chatbot').then((m) => m.mountChatbot({ page: 'v4' })));

@@ -57,7 +57,7 @@
   border: none;
   border-radius: 999px;
   background: var(--accent-gradient);
-  color: #05070d;
+  color: var(--on-accent, #05070d);
   font-weight: 600;
   font-size: 0.95rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;

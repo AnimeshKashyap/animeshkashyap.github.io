@@ -1,0 +1,117 @@
+[
+  {
+    "id": "faq-contact",
+    "type": "faq",
+    "title": "How to contact Animesh",
+    "text": "Email: animeshtheanime@gmail.com\nPhone: +91 8802525672\nPhone: +91 7982102342",
+    "tags": ["contact", "email", "phone"],
+    "aliases": [
+      "get in touch",
+      "reach out",
+      "contact information",
+      "animeshtheanime@gmail.com"
+    ],
+    "source": "FAQ: Contact",
+    "available": true
+  },
+  {
+    "id": "faq-cv-download",
+    "type": "faq",
+    "title": "Download résumé / CV",
+    "text": "The résumé PDF on this site is at /resume.pdf.",
+    "tags": ["cv", "resume", "download"],
+    "aliases": [
+      "download resume",
+      "download CV",
+      "résumé",
+      "resume pdf"
+    ],
+    "source": "FAQ: CV download",
+    "available": true
+  },
+  {
+    "id": "faq-projects",
+    "type": "faq",
+    "title": "Personal projects on this portfolio",
+    "text": "Project titles listed on this site:\n- YouTube Automation for Game Tournament Highlights\n- Choice-based User Flow Implementation\n- DOTA 2 Custom Bot\n- Real-Time Chat Application\n- Android Game Development\n- C++ Game Development (Win32)",
+    "tags": ["projects", "portfolio"],
+    "aliases": [
+      "what projects",
+      "project list",
+      "personal projects"
+    ],
+    "source": "FAQ: Projects",
+    "available": true
+  },
+  {
+    "id": "faq-linkedin",
+    "type": "faq",
+    "title": "LinkedIn profile",
+    "text": "LinkedIn: https://www.linkedin.com/in/animesh-kashyap/",
+    "tags": ["linkedin", "social"],
+    "aliases": ["LinkedIn URL", "linkedin profile"],
+    "source": "FAQ: LinkedIn",
+    "available": true
+  },
+  {
+    "id": "faq-github",
+    "type": "faq",
+    "title": "GitHub profile",
+    "text": "GitHub: http://github.com/Animeshkashyap/",
+    "tags": ["github", "social"],
+    "aliases": ["GitHub URL", "github profile"],
+    "source": "FAQ: GitHub",
+    "available": true
+  },
+  {
+    "id": "unavailable-salary-expectations",
+    "type": "unavailable",
+    "title": "Salary expectations",
+    "text": "Salary expectations are not listed in the CV. Contact Animesh by email at animeshtheanime@gmail.com to discuss.",
+    "tags": ["salary", "compensation"],
+    "aliases": [
+      "expected salary",
+      "compensation expectations",
+      "salary range"
+    ],
+    "source": "Unavailable: Salary expectations",
+    "available": false
+  },
+  {
+    "id": "unavailable-notice-period",
+    "type": "unavailable",
+    "title": "Notice period",
+    "text": "Notice period is not listed in the CV. Contact Animesh by email at animeshtheanime@gmail.com to discuss.",
+    "tags": ["notice period", "availability"],
+    "aliases": ["joining timeline", "how soon can you join"],
+    "source": "Unavailable: Notice period",
+    "available": false
+  },
+  {
+    "id": "unavailable-work-authorization",
+    "type": "unavailable",
+    "title": "Work authorization",
+    "text": "Work authorization details are not listed in the CV. Contact Animesh by email at animeshtheanime@gmail.com to discuss.",
+    "tags": ["work authorization", "visa", "eligibility"],
+    "aliases": [
+      "work visa",
+      "right to work",
+      "work permit"
+    ],
+    "source": "Unavailable: Work authorization",
+    "available": false
+  },
+  {
+    "id": "unavailable-relocation",
+    "type": "unavailable",
+    "title": "Relocation",
+    "text": "Relocation preferences are not listed in the CV. Contact Animesh by email at animeshtheanime@gmail.com to discuss.",
+    "tags": ["relocation", "moving"],
+    "aliases": [
+      "willing to relocate",
+      "open to relocation"
+    ],
+    "source": "Unavailable: Relocation",
+    "available": false
+  }
+]

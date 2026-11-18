@@ -51,7 +51,7 @@
 
 .primaryCta {
   background: var(--accent-gradient);
-  color: #05070d;
+  color: var(--on-accent, #05070d);
 }
 
 .primaryCta:hover {
