@@ -37,17 +37,19 @@ describe('grounded conversational composition', () => {
 
   it('keeps absence concise rather than inventing a second bubble', () => {
     const reply = composeReply([], 'unknown');
-    expect(reply.bubbles).toEqual(["I don't have that in the CV."]);
-    expect(reply.actions).toEqual(['email']);
+    expect(reply.bubbles).toEqual(["I'm not sure about that one. You can reach out to Animesh directly, or pick one of the suggested questions."]);
+    expect(reply.actions).toEqual(['email', 'linkedin']);
     expect(reply.confident).toBe(false);
+    expect(reply.suggestions[0]).toBe('Contact');
+    expect(reply.suggestions).toHaveLength(4);
   });
 
   it.each(['experience', 'project', 'skill', 'education'] as const)('splits aggregate %s lists while retaining every source', (type) => {
-    // The general education answer omits languages and gives each award its own bubble.
-    const records = getRecords().filter((record) => record.type === type && !record.id.endsWith('-languages'));
+    // The general education answer lists degrees only; awards and languages have their own answers.
+    const records = getRecords().filter((record) => record.type === type && !/-(languages|awards)$/u.test(record.id));
     const reply = composeReply(getRecords().filter((record) => record.type === type).map((record) => ({ record, score: 1 })), type);
     expect(reply.bubbles.length).toBeGreaterThan(1);
-    expect(reply.bubbles.length).toBeLessThanOrEqual(type === 'education' ? 6 : 5);
+    expect(reply.bubbles.length).toBeLessThanOrEqual(5);
     expect(reply.bubbles.every((bubble) => bubble.length <= 400)).toBe(true);
     expect(reply.sources).toHaveLength(records.length);
     for (const record of records) {
@@ -57,7 +59,7 @@ describe('grounded conversational composition', () => {
   });
 
   it('orders dated education newest-first without changing source content', () => {
-    const records = getRecords().filter((record) => record.type === 'education' && !record.id.endsWith('-languages'));
+    const records = getRecords().filter((record) => record.type === 'education' && !/-(languages|awards)$/u.test(record.id));
     const hits = getRecords().filter((record) => record.type === 'education').map((record, index) => ({
       record: { ...record, text: `Period: ${2020 - index}\n${record.text}` }, score: 1,
     }));

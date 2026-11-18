@@ -3,7 +3,7 @@ import { getRecords } from '../knowledge';
 import { createEngine } from './engine';
 import { createSearcher } from './search';
 
-const LOW_CONFIDENCE_TEXT = "I don't have that in the CV.";
+const LOW_CONFIDENCE_TEXT = "I'm not sure about that one. You can reach out to Animesh directly, or pick one of the suggested questions.";
 
 const engine = createEngine();
 const searcher = createSearcher(getRecords());
@@ -26,7 +26,7 @@ describe('retrieval boundary queries', () => {
       expect(reply.text).toBe(LOW_CONFIDENCE_TEXT);
       expect(reply.confident).toBe(false);
       expect(reply.sources).toEqual([]);
-      expect(reply.actions).toEqual(['email']);
+      expect(reply.actions).toEqual(['email', 'linkedin']);
     },
   );
 });

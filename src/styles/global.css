@@ -16,6 +16,8 @@
   --accent-pink: #f472b6;
   --accent-gradient: linear-gradient(120deg, var(--accent-cyan), var(--accent-violet));
   --on-accent: #05070d;
+  /* Chatbot chip text/border tint: the more legible accent per theme. */
+  --chip-accent: var(--accent-cyan);
 
   --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
@@ -51,6 +53,7 @@
   --accent-pink: #db2777;
   --accent-gradient: linear-gradient(120deg, #4338ca, #db2777);
   --on-accent: #ffffff;
+  --chip-accent: var(--accent-violet);
 
   --shadow-card: 0 20px 50px rgba(30, 41, 59, 0.12);
 

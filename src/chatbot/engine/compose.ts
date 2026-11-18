@@ -5,7 +5,7 @@ import { canonicalize, normalize } from './synonyms';
 import { recordBubbles, replyBubbles } from './bubbles';
 
 const MAX_HIGHLIGHTS = 3;
-const LOW_CONFIDENCE_TEXT = "I don't have that in the CV.";
+const LOW_CONFIDENCE_TEXT = "I'm not sure about that one. You can reach out to Animesh directly, or pick one of the suggested questions.";
 const FOLLOW_UP_POOL = CHATBOT_KEYWORDS.map(({ label }) => label);
 
 function fieldValue(text: string, label: string): string | undefined {
@@ -499,8 +499,9 @@ function lowConfidenceReply(query: string): Reply {
     bubbles,
     text: bubbles.join('\n\n'),
     sources: [],
-    actions: ['email'],
-    suggestions: pickFollowUps([], query),
+    actions: ['email', 'linkedin'],
+    // The Contact chip leads, next to the Email action, so the visitor can reach Animesh in one click.
+    suggestions: ['Contact', ...pickFollowUps([], query).filter((label) => label !== 'Contact')].slice(0, 4),
     confident: false,
   };
 }
@@ -574,19 +575,29 @@ export function composeReply(hits: SearchHit[], query: string): Reply {
     return lowConfidenceReply(query);
   }
 
-  // The general education answer omits languages unless the query asks about them.
-  const skipLanguages =
-    hits.length > 1 &&
-    hits.every((hit) => hit.record.type === 'education') &&
-    !/\b(languages?|speak|spoken|fluent|fluency)\b/iu.test(query);
-  const shown = skipLanguages ? hits.filter((hit) => !hit.record.id.endsWith('-languages')) : hits;
+  // The general education answer lists degrees only; awards and languages appear when the query asks for them.
+  const educationOnly = hits.length > 1 && hits.every((hit) => hit.record.type === 'education');
+  const awardsHit = hits.find((hit) => hit.record.id.endsWith('-awards'));
+  const asksAwards = /\b(awards?|certifications?|certificates?|certified|achievements?)\b/iu.test(query);
+  const asksLanguages = /\b(languages?|speak|spoken|fluent|fluency)\b/iu.test(query);
+  const shown = educationOnly && asksAwards && awardsHit !== undefined
+    ? [awardsHit]
+    : educationOnly
+      ? hits.filter(
+          (hit) =>
+            (asksLanguages || !hit.record.id.endsWith('-languages')) &&
+            (asksAwards || !hit.record.id.endsWith('-awards')),
+        )
+      : hits;
   const records =
     shown.length === 1
       ? shown.map((hit) => hit.record)
       : recordsInAggregateOrder(shown);
   const bubbles =
     shown.length === 1
-      ? recordBubbles(formatSingleRecord(shown[0]!.record))
+      ? shown[0]!.record.id.endsWith('-awards')
+        ? educationBubbles([shown[0]!.record])
+        : recordBubbles(formatSingleRecord(shown[0]!.record))
       : formatAggregate(shown);
 
   return {

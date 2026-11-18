@@ -417,23 +417,46 @@ describe('chat panel', () => {
     expect(engineBehavior.ask).not.toHaveBeenCalled();
   });
 
-  it('restarts debounce for new text and clears stale selection for short or empty input', async () => {
+  it('keeps rows visible while typing, updating them in place instead of flickering', async () => {
     const { input, list } = await autocomplete();
+    expect(list.classList.contains('chat-panel__autocomplete--enter')).toBe(true);
     input.dispatchEvent('keydown', { key: 'ArrowDown' });
     input.value = 'college';
     input.dispatchEvent('input');
-    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+    // No hide/show cycle: the list and highlight stay until the new rows arrive.
+    expect(list.hidden).toBe(false);
+    expect(input.getAttribute('aria-activedescendant')).not.toBeNull();
     await vi.advanceTimersByTimeAsync(79);
     input.value = 'resume';
     input.dispatchEvent('input');
     await vi.advanceTimersByTimeAsync(79);
-    expect(list.hidden).toBe(true);
+    expect(list.hidden).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
+    expect(list.hidden).toBe(false);
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
     expect(list.children.map((option) => option.textContent)).toEqual(['How can I download his resume?']);
-    for (const value of ['a', '', '   ']) {
+  });
+
+  it('keeps rows for at least 3s when matches disappear, then hides; empty input hides at once', async () => {
+    const { input, list } = await autocomplete();
+    input.value = 'zzzqqq';
+    input.dispatchEvent('input');
+    await vi.advanceTimersByTimeAsync(80);
+    expect(list.hidden).toBe(false);
+    await vi.advanceTimersByTimeAsync(2800);
+    expect(list.hidden).toBe(false);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(list.hidden).toBe(true);
+    expect(list.children).toHaveLength(0);
+    expect(input.getAttribute('aria-expanded')).toBe('false');
+
+    input.value = 'what';
+    input.dispatchEvent('input');
+    await vi.advanceTimersByTimeAsync(80);
+    expect(list.hidden).toBe(false);
+    for (const value of ['', '   ']) {
       input.value = value;
       input.dispatchEvent('input');
-      await vi.advanceTimersByTimeAsync(80);
       expect(list.hidden).toBe(true);
       expect(list.children).toHaveLength(0);
       expect(input.getAttribute('aria-expanded')).toBe('false');
@@ -510,8 +533,35 @@ describe('chat panel', () => {
     const suggestions = collectDescendants(getPanel(shadow)).filter((node) =>
       node.classList.contains('chat-chip--suggestion'),
     );
-    expect(suggestions).toHaveLength(8);
+    expect(suggestions).toHaveLength(CHATBOT_KEYWORDS.length);
     expect(suggestions.map((node) => node.textContent)).toEqual(CHATBOT_KEYWORDS.map(({ label }) => label));
+  });
+
+  it('keeps query chips in the side host (not under messages) and refreshes them after each reply', async () => {
+    engineBehavior.ask.mockResolvedValue(makeReply({ text: 'Answer', suggestions: ['Skills', 'Projects'] }));
+    const { shadow } = mountHost();
+    openPanel();
+    const panel = getPanel(shadow);
+    const host = panel.querySelector('.chat-panel__side-chips')!;
+    const chipsIn = (node: MockElement) => collectDescendants(node).filter((n) => n.classList.contains('chat-chip--suggestion'));
+    expect(chipsIn(host)).toHaveLength(CHATBOT_KEYWORDS.length);
+    expect(chipsIn(panel.querySelector('.chat-panel__log')!)).toHaveLength(0);
+
+    chipsIn(host)[0].click();
+    expect(chipsIn(host)).toHaveLength(0);
+    await vi.waitFor(() => expect(chipsIn(host).map((n) => n.textContent)).toEqual(['Skills', 'Projects']));
+    expect(chipsIn(panel.querySelector('.chat-panel__log')!)).toHaveLength(0);
+  });
+
+  it('floats the chip host outside the panel edge on wide screens and above the input on narrow ones', () => {
+    const css = panelCss;
+    const wide = css.slice(css.indexOf('@media (--chatbot-desktop) and (min-width: 760px)'));
+    expect(wide).toContain('.chat-panel__side-chips');
+    expect(wide).toContain('left: var(--tip-left)');
+    expect(wide).toContain('right: var(--tip-right)');
+    expect(wide).toContain('overflow: visible');
+    expect(wide).toContain('align-items: var(--side-align, flex-start)');
+    expect(css).toMatch(/\.chat-panel__side-chips \{[^}]*flex-shrink: 0;[^}]*max-height: 96px/u);
   });
 
   it.each(CHATBOT_KEYWORDS)('sends the canonical question for $label and displays it in the user bubble', async ({ label, query }) => {
@@ -631,7 +681,7 @@ describe('chat panel', () => {
     expect(panel.querySelector('.chat-msg--user')).toBeNull();
     expect(browser.sessionData.has(HISTORY_KEY)).toBe(false);
     expect(collectDescendants(panel).filter((n) => n.classList.contains('chat-chip--suggestion')))
-      .toHaveLength(8);
+      .toHaveLength(CHATBOT_KEYWORDS.length);
     expect(engineBehavior.ask).not.toHaveBeenCalled();
   });
 
@@ -647,7 +697,7 @@ describe('chat panel', () => {
 
     await vi.waitFor(() => {
       expect(collectDescendants(getPanel(shadow)).filter((n) => n.classList.contains('chat-chip--suggestion')))
-        .toHaveLength(8);
+        .toHaveLength(CHATBOT_KEYWORDS.length);
     });
     expect(getPanel(shadow).textContent).not.toContain('hidden');
 
@@ -663,7 +713,7 @@ describe('chat panel', () => {
     await vi.waitFor(() => {
       expect(browser.sessionData.has(HISTORY_KEY)).toBe(false);
       expect(collectDescendants(getPanel(shadow)).filter((n) => n.classList.contains('chat-chip--suggestion')))
-        .toHaveLength(8);
+        .toHaveLength(CHATBOT_KEYWORDS.length);
     });
   });
 
@@ -685,7 +735,7 @@ describe('chat panel', () => {
       expect(browser.sessionData.has(HISTORY_KEY)).toBe(false);
     });
     expect(collectDescendants(getPanel(shadow)).filter((n) => n.classList.contains('chat-chip--suggestion')))
-      .toHaveLength(8);
+      .toHaveLength(CHATBOT_KEYWORDS.length);
   });
 
   it('reset after in-session messages clears storage and restores welcome', async () => {
@@ -717,7 +767,7 @@ describe('chat panel', () => {
     expect(getPanel(shadow).querySelectorAll('.chat-msg--user')).toHaveLength(0);
     expect(
       collectDescendants(getPanel(shadow)).filter((n) => n.classList.contains('chat-chip--suggestion')),
-    ).toHaveLength(8);
+    ).toHaveLength(CHATBOT_KEYWORDS.length);
   });
 
   it.each(['reset', 'close', 'Escape'])('cancels late engine replies on %s', async (control) => {

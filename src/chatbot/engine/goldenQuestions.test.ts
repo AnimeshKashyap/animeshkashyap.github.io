@@ -7,7 +7,7 @@ import { createEngine } from './engine';
 const engine = createEngine();
 const recordsById = new Map(getRecords().map((record) => [record.id, record]));
 
-const LOW_CONFIDENCE_TEXT = "I don't have that in the CV.";
+const LOW_CONFIDENCE_TEXT = "I'm not sure about that one. You can reach out to Animesh directly, or pick one of the suggested questions.";
 
 function fieldValue(text: string, label: string): string | undefined {
   const prefix = `${label}: `;
@@ -246,7 +246,7 @@ const GOLDEN_VISITOR_QUESTIONS: readonly [string, GoldenExpectation][] = [
     'what is your favourite pizza',
     {
       confident: false,
-      actions: ['email'],
+      actions: ['email', 'linkedin'],
       sourcesEmpty: true,
       textIncludes: [LOW_CONFIDENCE_TEXT],
     },
@@ -255,7 +255,7 @@ const GOLDEN_VISITOR_QUESTIONS: readonly [string, GoldenExpectation][] = [
     'does he have a pet cat named fluffy',
     {
       confident: false,
-      actions: ['email'],
+      actions: ['email', 'linkedin'],
       sourcesEmpty: true,
       textIncludes: [LOW_CONFIDENCE_TEXT],
     },
@@ -324,7 +324,7 @@ describe('golden visitor questions', () => {
   it('unknown questions stay below the retrieval threshold', async () => {
     const reply = await engine.ask('what is your favourite pizza');
     expect(reply.confident).toBe(false);
-    expect(reply.actions).toEqual(['email']);
+    expect(reply.actions).toEqual(['email', 'linkedin']);
   });
 
   it('confident retrieval never returns empty reply text', async () => {

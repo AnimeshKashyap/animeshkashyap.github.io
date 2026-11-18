@@ -120,8 +120,15 @@ const LAUNCHER_STYLE_BODY = `
 }
 .launcher:hover::after, .launcher:focus-visible::after { opacity: 1; }
 
+/* Open chat: lift the dock above the sticky NavBar (z-index 50) so its row of tooltips is not covered. */
+@media (--chatbot-desktop) {
+  .launcher-wrap:has(.launcher[aria-expanded="true"]) { z-index: 60; }
+}
+
 /* Tooltips stay visible while the chat is closed, except during scrolling (data-tips is toggled in mountLauncher). */
 @media (--chatbot-desktop) {
+  /* While the chat is open every action tooltip stays visible above its button. */
+  .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button::after,
   .launcher-wrap[data-tips] .launcher[aria-expanded="false"]::after,
   .launcher-wrap[data-tips] .launcher[aria-expanded="false"] ~ .quick-dock .quick-dock__button::after { opacity: 1; }
 }
