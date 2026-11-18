@@ -177,7 +177,10 @@ export function mountMoreToggle(wrap: HTMLElement, dock: HTMLElement): () => voi
   }
   more.addEventListener('click', () => setOpen(!dock.hasAttribute('data-open')));
   for (const b of dock.querySelectorAll('button')) b.addEventListener('click', () => setOpen(false));
-  compact.addEventListener?.('change', () => sync(dock.hasAttribute('data-open')));
+  compact.addEventListener?.('change', () => {
+    if (!compact.matches) setOpen(false);
+    sync(dock.hasAttribute('data-open'));
+  });
   sync(false);
   wrap.appendChild(more);
   return () => setOpen(false);

@@ -156,6 +156,49 @@ describe('chat panel', () => {
     expect(disconnect).toHaveBeenCalled();
   });
 
+  it('releases and reacquires the compact lock once per breakpoint flip while open', () => {
+    const values = new Map([['overflow', 'scroll']]);
+    const style = {
+      getPropertyValue: (name: string) => values.get(name) ?? '',
+      getPropertyPriority: () => '',
+      setProperty: vi.fn((name: string, value: string) => values.set(name, value)),
+      removeProperty: (name: string) => values.delete(name),
+    };
+    Object.assign(document, { documentElement: { style } });
+    const changes = new Set<() => void>();
+    const mq = {
+      matches: false,
+      addEventListener: (_: string, l: () => void) => changes.add(l),
+      removeEventListener: (_: string, l: () => void) => changes.delete(l),
+    };
+    const flip = (matches: boolean) => { mq.matches = matches; for (const l of [...changes]) (l as (e: object) => void)({ matches }); };
+    vi.spyOn(window, 'matchMedia').mockReturnValue(mq as unknown as MediaQueryList);
+    const listeners = new Map<string, () => void>();
+    Object.assign(window, {
+      visualViewport: {
+        height: 400, offsetTop: 0,
+        addEventListener: (n: string, c: () => void) => listeners.set(n, c),
+        removeEventListener: (n: string) => listeners.delete(n),
+      },
+    });
+    const { shadow } = mountHost();
+    const baseline = changes.size;
+    openPanel();
+    expect(changes.size).toBe(baseline + 1);
+    flip(true);
+    expect(values.get('overflow')).toBe('hidden');
+    expect(listeners.size).toBe(2);
+    flip(true);
+    flip(false);
+    expect(values.get('overflow')).toBe('scroll');
+    expect(listeners.size).toBe(0);
+    expect(getPanel(shadow).style._values['--chat-viewport-height']).toBeUndefined();
+    flip(true);
+    getPanel(shadow).dispatchEvent('keydown', { key: 'Escape' });
+    expect(values.get('overflow')).toBe('scroll');
+    expect(changes.size).toBe(baseline);
+  });
+
   it('leaves desktop overflow untouched and closes through the header with launcher focus', () => {
     const setProperty = vi.fn();
     Object.assign(document, { documentElement: { style: { setProperty } } });

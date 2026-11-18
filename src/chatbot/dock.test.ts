@@ -127,6 +127,36 @@ describe('quick action dock', () => {
     const fire = (type: string, event: object) => { for (const l of [...(docListeners.get(type) ?? [])]) l(event); };
     afterEach(() => vi.restoreAllMocks());
 
+    it('resets the dock on breakpoint flips and leaves no document listeners', () => {
+      const changes = new Set<() => void>();
+      const mq = { matches: true, addEventListener: (_: string, l: () => void) => changes.add(l) };
+      const flip = (matches: boolean) => { mq.matches = matches; for (const l of changes) l(); };
+      const { dock, more } = setup();
+      vi.spyOn(window, 'matchMedia').mockReturnValue(mq as unknown as MediaQueryList);
+      const wrap = document.createElement('div') as unknown as MockElement;
+      const d = createDock('main') as unknown as MockElement;
+      wrap.appendChild(d);
+      mountMoreToggle(wrap as unknown as HTMLElement, d as unknown as HTMLElement);
+      const arrow = wrap.querySelector('.quick-dock__more')!;
+      arrow.click();
+      expect(d.hasAttribute('data-open')).toBe(true);
+      flip(false);
+      expect(d.hasAttribute('data-open')).toBe(false);
+      expect(arrow.getAttribute('aria-expanded')).toBe('false');
+      expect(d.hasAttribute('inert')).toBe(false);
+      expect(d.hasAttribute('aria-hidden')).toBe(false);
+      for (const b of d.querySelectorAll('.quick-dock__button')) expect(b.hasAttribute('tabindex')).toBe(false);
+      expect(docListeners.get('pointerdown')?.size ?? 0).toBe(0);
+      expect(docListeners.get('keydown')?.size ?? 0).toBe(0);
+      flip(true);
+      expect(d.hasAttribute('data-open')).toBe(false);
+      expect(d.hasAttribute('inert')).toBe(true);
+      expect(d.getAttribute('aria-hidden')).toBe('true');
+      for (const b of d.querySelectorAll('.quick-dock__button')) expect(b.getAttribute('tabindex')).toBe('-1');
+      expect(dock).toBeDefined();
+      expect(more).toBeDefined();
+    });
+
     it('renders an accessible arrow wired to the dock and hides collapsed icons', () => {
       const { dock, more } = setup();
       expect(more.getAttribute('aria-label')).toBe('More options');

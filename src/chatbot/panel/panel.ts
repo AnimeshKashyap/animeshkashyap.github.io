@@ -44,6 +44,20 @@ let pendingTyping: HTMLElement | undefined;
 let messageHistory: HistoryEntry[] = [];
 let releaseCompactViewport: (() => void) | undefined;
 
+let stopBreakpointWatch: (() => void) | undefined;
+
+// Re-evaluate the lock when the compact query flips while the panel is open.
+function watchBreakpoint(root: HTMLElement): void {
+  stopBreakpointWatch?.();
+  const media = matchCompactMode();
+  const onChange = (): void => lockCompactViewport(root);
+  media.addEventListener?.('change', onChange);
+  stopBreakpointWatch = () => {
+    media.removeEventListener?.('change', onChange);
+    stopBreakpointWatch = undefined;
+  };
+}
+
 function lockCompactViewport(root: HTMLElement): void {
   releaseCompactViewport?.();
   if (!matchCompactMode().matches) return;
@@ -64,6 +78,7 @@ function lockCompactViewport(root: HTMLElement): void {
   const observer = new MutationObserver(() => {
     if (!root.isConnected) {
       releaseCompactViewport?.();
+      stopBreakpointWatch?.();
       if (panelElements) cancelResponse(panelElements);
       panelVisible = false;
       panelMounted = false;
@@ -227,6 +242,7 @@ function resetConversation(elements: PanelElements): void {
 }
 
 function closePanel(elements: PanelElements): void {
+  stopBreakpointWatch?.();
   releaseCompactViewport?.();
   cancelResponse(elements);
   panelVisible = false;
@@ -591,6 +607,7 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
 
 function showPanel(elements: PanelElements): void {
   lockCompactViewport(elements.root);
+  watchBreakpoint(elements.root);
   panelVisible = true;
   setPanelHidden(elements.root, false);
   syncLauncherExpanded(true);
