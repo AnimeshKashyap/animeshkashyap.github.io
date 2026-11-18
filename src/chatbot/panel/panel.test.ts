@@ -199,6 +199,85 @@ describe('chat panel', () => {
     expect(changes.size).toBe(baseline);
   });
 
+  function stubCompactDocument(initialOverflow: string) {
+    const values = new Map<string, string>(initialOverflow ? [['overflow', initialOverflow]] : []);
+    const style = {
+      getPropertyValue: (name: string) => values.get(name) ?? '',
+      getPropertyPriority: () => '',
+      setProperty: vi.fn((name: string, value: string) => values.set(name, value)),
+      removeProperty: vi.fn((name: string) => values.delete(name)),
+    };
+    Object.assign(document, { documentElement: { style } });
+    return { values, style };
+  }
+
+  it('removes the overflow lock entirely when the page had no inline overflow, and tolerates a missing visualViewport', () => {
+    const { values, style } = stubCompactDocument('');
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+    Object.assign(window, { visualViewport: undefined });
+    vi.stubGlobal('MutationObserver', class { observe() {} disconnect() {} });
+    const { shadow } = mountHost();
+    expect(() => openPanel()).not.toThrow();
+    expect(values.get('overflow')).toBe('hidden');
+    expect(getPanel(shadow).style._values['--chat-viewport-height']).toBeUndefined();
+    getPanel(shadow).dispatchEvent('keydown', { key: 'Escape' });
+    expect(values.has('overflow')).toBe(false);
+    expect(style.removeProperty).toHaveBeenCalledWith('overflow');
+    expect(isPanelOpen()).toBe(false);
+  });
+
+  it('does not leak lock, viewport or breakpoint listeners across repeated open/close cycles', () => {
+    const { values } = stubCompactDocument('auto');
+    const changes = new Set<() => void>();
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: true,
+      addEventListener: (_: string, l: () => void) => changes.add(l),
+      removeEventListener: (_: string, l: () => void) => changes.delete(l),
+    } as unknown as MediaQueryList);
+    const listeners = new Map<string, () => void>();
+    Object.assign(window, {
+      visualViewport: {
+        height: 500, offsetTop: 0,
+        addEventListener: (n: string, c: () => void) => listeners.set(n, c),
+        removeEventListener: (n: string) => listeners.delete(n),
+      },
+    });
+    const disconnect = vi.fn();
+    let observers = 0;
+    vi.stubGlobal('MutationObserver', class { constructor() { observers++; } observe() {} disconnect = disconnect; });
+    const { shadow } = mountHost();
+    const baseline = changes.size;
+    for (let i = 0; i < 3; i++) {
+      openPanel();
+      expect(values.get('overflow')).toBe('hidden');
+      expect(listeners.size).toBe(2);
+      expect(changes.size).toBe(baseline + 1);
+      getPanel(shadow).dispatchEvent('keydown', { key: 'Escape' });
+      expect(values.get('overflow')).toBe('auto');
+      expect(listeners.size).toBe(0);
+      expect(changes.size).toBe(baseline);
+    }
+    expect(disconnect).toHaveBeenCalledTimes(observers);
+  });
+
+  it('keeps the lock when the host is still connected after an unrelated DOM mutation', () => {
+    const { values } = stubCompactDocument('scroll');
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+    Object.assign(window, { visualViewport: undefined });
+    let onMutation: () => void = () => {};
+    vi.stubGlobal('MutationObserver', class {
+      constructor(callback: () => void) { onMutation = callback; }
+      observe() {}
+      disconnect() {}
+    });
+    const { shadow } = mountHost();
+    openPanel();
+    Object.defineProperty(getPanel(shadow), 'isConnected', { value: true, configurable: true });
+    onMutation();
+    expect(values.get('overflow')).toBe('hidden');
+    expect(isPanelOpen()).toBe(true);
+  });
+
   it('leaves desktop overflow untouched and closes through the header with launcher focus', () => {
     const setProperty = vi.fn();
     Object.assign(document, { documentElement: { style: { setProperty } } });
