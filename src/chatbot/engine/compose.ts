@@ -204,6 +204,44 @@ function educationSummary(record: KnowledgeRecord): string {
   return record.title;
 }
 
+/** Full education details, used when the whole answer is about education. */
+function educationDetailBlock(record: KnowledgeRecord): string {
+  const school = fieldValue(record.text, 'School');
+  const degree = fieldValue(record.text, 'Degree');
+  if (degree !== undefined && school !== undefined) {
+    const period = fieldValue(record.text, 'Period');
+    const location = fieldValue(record.text, 'Location');
+    const detail = fieldValue(record.text, 'Detail');
+    const head = `${degree} — ${school}${period !== undefined ? ` (${period})` : ''}`;
+    const tail = [location, detail].filter((part) => part !== undefined).join(' — ');
+    return `• ${tail.length > 0 ? `${head}, ${tail}` : head}`;
+  }
+  const items = record.text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  if (record.id.endsWith('-languages')) {
+    return `${record.title}: ${items.map((item) => item.replace(/^([^:]+):\s*(.+)$/u, '$1 ($2)')).join(', ')}`;
+  }
+  return [`${record.title}:`, ...bulletLines(items, items.length)].join('\n');
+}
+
+/** Education-only answer: awards open with their first bullet, then one bubble per remaining bullet. */
+function educationBubbles(records: readonly KnowledgeRecord[]): string[] {
+  const bubbles: string[] = [];
+  for (const record of records) {
+    const block = educationDetailBlock(record);
+    if (record.id.endsWith('-awards')) {
+      const [heading = '', first = '', ...rest] = block.split('\n');
+      bubbles.push(...replyBubbles([`${heading}\n${first}`]));
+      for (const bullet of rest) bubbles.push(...replyBubbles([bullet]));
+    } else {
+      bubbles.push(...replyBubbles([block]));
+    }
+  }
+  return bubbles;
+}
+
 function aggregateLine(record: KnowledgeRecord): string {
   switch (record.type) {
     case 'experience':
@@ -396,6 +434,9 @@ function formatAggregate(hits: SearchHit[]): string[] {
             compareRecordsByPeriodStart(left, right, stableOrder),
           )
         : raw;
+    if (!multipleTypes && type === 'education') {
+      return educationBubbles(records);
+    }
     const lines = records.map((record) => `• ${aggregateLine(record)}`);
     if (multipleTypes) {
       const label = SECTION_LABEL[type];
@@ -533,14 +574,20 @@ export function composeReply(hits: SearchHit[], query: string): Reply {
     return lowConfidenceReply(query);
   }
 
+  // The general education answer omits languages unless the query asks about them.
+  const skipLanguages =
+    hits.length > 1 &&
+    hits.every((hit) => hit.record.type === 'education') &&
+    !/\b(languages?|speak|spoken|fluent|fluency)\b/iu.test(query);
+  const shown = skipLanguages ? hits.filter((hit) => !hit.record.id.endsWith('-languages')) : hits;
   const records =
-    hits.length === 1
-      ? hits.map((hit) => hit.record)
-      : recordsInAggregateOrder(hits);
+    shown.length === 1
+      ? shown.map((hit) => hit.record)
+      : recordsInAggregateOrder(shown);
   const bubbles =
-    hits.length === 1
-      ? recordBubbles(formatSingleRecord(hits[0]!.record))
-      : formatAggregate(hits);
+    shown.length === 1
+      ? recordBubbles(formatSingleRecord(shown[0]!.record))
+      : formatAggregate(shown);
 
   return {
     bubbles,

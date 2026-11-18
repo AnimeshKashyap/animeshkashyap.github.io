@@ -459,6 +459,11 @@ export function installBrowserGlobals(): BrowserGlobalsHandle {
     setTimeout: globalThis.setTimeout.bind(globalThis),
     clearTimeout: globalThis.clearTimeout.bind(globalThis),
     location: { href: '', hash: '' },
+    windowListeners: new Map<string, (() => void)[]>(),
+    addEventListener(type: string, listener: () => void) {
+      this.windowListeners.set(type, [...(this.windowListeners.get(type) ?? []), listener]);
+    },
+    removeEventListener() {},
   };
 
 

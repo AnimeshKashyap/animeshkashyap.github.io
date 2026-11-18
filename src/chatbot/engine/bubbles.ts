@@ -3,7 +3,7 @@ export function replyBubbles(blocks: readonly string[]): string[] {
   const bubbles: string[] = [];
   for (const block of blocks) {
     // Prefer paragraphs, then lines/sentences; unusually long fields wrap at words.
-    const parts = block.trim().split(/\n\s*\n|\n|(?<=[.!?])\s+(?=[A-Z])/u);
+    const parts = block.trim().split(/\n\s*\n|\n|(?<=[a-z0-9)][.!?])\s+(?=[A-Z])/u);
     let current = '';
     for (const part of parts) {
       const words = part.trim().split(/\s+/u);

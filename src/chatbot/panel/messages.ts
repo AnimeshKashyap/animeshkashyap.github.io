@@ -11,20 +11,21 @@ export type AppendBotMessageOptions = {
   signal?: AbortSignal;
 };
 
-const REVEAL_DELAY_MS = 100;
+const REVEAL_DELAY_MS = 500;
+const FOLLOW_UP_DELAY_MS = 1000;
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-function delay(signal?: AbortSignal): Promise<void> {
+function delay(signal?: AbortSignal, ms: number = REVEAL_DELAY_MS): Promise<void> {
   return new Promise((resolve) => {
     const finish = (): void => {
       window.clearTimeout(timer);
       signal?.removeEventListener('abort', finish);
       resolve();
     };
-    const timer = window.setTimeout(finish, REVEAL_DELAY_MS);
+    const timer = window.setTimeout(finish, ms);
     signal?.addEventListener('abort', finish, { once: true });
     if (signal?.aborted) finish();
   });
@@ -231,36 +232,61 @@ export async function appendBotMessage(
   const staged = options.reveal !== false && !prefersReducedMotion();
   const { signal } = options;
   if (signal?.aborted) return;
+  const extras = document.createElement('div');
+  appendBotExtras(extras, reply, handlers);
+  const groups = [...extras.children];
+  const label = (group: Element): string | null => group.getAttribute('aria-label');
+  // Source chips are informational and belong to the start of the message.
+  const sourcesGroup = groups.find((group) => label(group) === 'Sources');
+  const followUps = groups.find((group) => label(group) === 'Suggested follow-up questions');
+  const newRow = (): HTMLElement => {
+    const created = document.createElement('div');
+    created.className = 'chat-msg chat-msg--bot';
+    log.appendChild(created);
+    return created;
+  };
+  const pause = async (ms: number): Promise<void> => {
+    const typing = appendTypingMessage(log);
+    await delay(signal, ms);
+    typing.parentNode?.removeChild(typing);
+  };
   let row: HTMLElement | undefined;
-  for (const text of reply.bubbles ?? [reply.text]) {
-    const typing = staged ? appendTypingMessage(log) : undefined;
-    if (staged) await delay(signal);
-    typing?.parentNode?.removeChild(typing);
+  let leading: HTMLElement | undefined;
+  if (sourcesGroup) {
+    if (staged) await pause(REVEAL_DELAY_MS);
     if (signal?.aborted) return;
-    row = document.createElement('div');
-    row.className = 'chat-msg chat-msg--bot';
+    leading = newRow();
+    row = leading;
+    if (staged) sourcesGroup.classList.add('chat-msg--enter');
+    row.appendChild(sourcesGroup);
+    scrollLogToBottom(log);
+  }
+  for (const text of reply.bubbles ?? [reply.text]) {
+    if (staged) await pause(REVEAL_DELAY_MS);
+    if (signal?.aborted) return;
+    row = leading ?? newRow();
+    leading = undefined;
     const bubble = document.createElement('div');
     bubble.className = 'chat-msg__bubble';
     appendFormattedText(bubble, text);
+    if (staged) bubble.classList.add('chat-msg--enter');
     row.appendChild(bubble);
-    log.appendChild(row);
     scrollLogToBottom(log);
   }
-  row ??= document.createElement('div');
-  if (!row.parentNode) {
-    row.className = 'chat-msg chat-msg--bot';
-    log.appendChild(row);
-  }
-  const extras = document.createElement('div');
-  appendBotExtras(extras, reply, handlers);
-  for (const group of [...extras.children]) {
-    if (staged && group.getAttribute('aria-label') !== 'Suggested follow-up questions') {
-      const typing = appendTypingMessage(log);
-      await delay(signal);
-      typing.parentNode?.removeChild(typing);
-    }
+  row ??= newRow();
+  for (const group of groups) {
+    if (group === sourcesGroup || group === followUps) continue;
+    if (staged) await pause(REVEAL_DELAY_MS);
     if (signal?.aborted) return;
+    if (staged) group.classList.add('chat-msg--enter');
     row.appendChild(group);
+    scrollLogToBottom(log);
+  }
+  if (followUps) {
+    if (staged) await pause(FOLLOW_UP_DELAY_MS);
+    if (signal?.aborted) return;
+    if (staged) followUps.classList.add('chat-msg--enter');
+    row.appendChild(followUps);
     scrollLogToBottom(log);
   }
 }

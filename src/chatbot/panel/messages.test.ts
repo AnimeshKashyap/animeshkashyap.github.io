@@ -172,7 +172,7 @@ describe('chat panel messages', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('stages bubbles, sources and actions every 100ms, then all suggestions', async () => {
+  it('stages sources first, then bubbles and actions every 500ms, then all suggestions after 1s', async () => {
     const log = createMessageLog();
     browser.setReducedMotion(false);
     const completion = appendBotMessage(log, makeReply({
@@ -182,23 +182,28 @@ describe('chat panel messages', () => {
       suggestions: ['Next?', 'More?'],
     }), { onSuggestion: vi.fn(), onAction: vi.fn() });
     expect(log.querySelectorAll('.chat-panel__typing-dots span')).toHaveLength(3);
-    expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(0);
-    await vi.advanceTimersByTimeAsync(99);
-    expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(0);
-    await vi.advanceTimersByTimeAsync(1);
-    expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(1);
-    expect(log.querySelectorAll('.chat-panel__typing-dots span')).toHaveLength(3);
-    await vi.advanceTimersByTimeAsync(100);
-    expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(2);
-    expect(log.querySelectorAll('.chat-panel__typing')).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(499);
     expect(log.querySelectorAll('.chat-msg__source-chip')).toHaveLength(0);
-    await vi.advanceTimersByTimeAsync(100);
+    await vi.advanceTimersByTimeAsync(1);
     expect(log.querySelectorAll('.chat-msg__source-chip')).toHaveLength(1);
+    expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(0);
+    expect(log.querySelectorAll('.chat-panel__typing-dots span')).toHaveLength(3);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(1);
+    // Sources sit in the first message row, before its bubble.
+    const first = log.querySelectorAll('.chat-msg--bot')[0];
+    expect((first.childNodes[0] as HTMLElement).className).toBe('chat-msg__sources');
+    expect((first.childNodes[1] as HTMLElement).className).toBe('chat-msg__bubble');
+    await vi.advanceTimersByTimeAsync(500);
+    expect(log.querySelectorAll('.chat-msg__line')).toHaveLength(2);
     expect(log.querySelectorAll('.chat-chip--action')).toHaveLength(0);
-    expect(log.querySelectorAll('.chat-chip--suggestion')).toHaveLength(0);
-    await vi.advanceTimersByTimeAsync(100);
-    await completion;
+    await vi.advanceTimersByTimeAsync(500);
     expect(log.querySelectorAll('.chat-chip--action')).toHaveLength(2);
+    expect(log.querySelectorAll('.chat-chip--suggestion')).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(999);
+    expect(log.querySelectorAll('.chat-chip--suggestion')).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(1);
+    await completion;
     expect(log.querySelectorAll('.chat-chip--suggestion')).toHaveLength(2);
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -216,7 +221,7 @@ describe('chat panel messages', () => {
     expect(log.childElementCount).toBe(0);
   });
 
-  it.each([100, 200, 300])('cancels after %ims without revealing remaining groups', async (elapsed) => {
+  it.each([500, 1000, 1500])('cancels after %ims without revealing remaining groups', async (elapsed) => {
     browser.setReducedMotion(false);
     const log = createMessageLog();
     const controller = new AbortController();

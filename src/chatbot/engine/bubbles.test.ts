@@ -43,10 +43,11 @@ describe('grounded conversational composition', () => {
   });
 
   it.each(['experience', 'project', 'skill', 'education'] as const)('splits aggregate %s lists while retaining every source', (type) => {
-    const records = getRecords().filter((record) => record.type === type);
-    const reply = composeReply(records.map((record) => ({ record, score: 1 })), type);
+    // The general education answer omits languages and gives each award its own bubble.
+    const records = getRecords().filter((record) => record.type === type && !record.id.endsWith('-languages'));
+    const reply = composeReply(getRecords().filter((record) => record.type === type).map((record) => ({ record, score: 1 })), type);
     expect(reply.bubbles.length).toBeGreaterThan(1);
-    expect(reply.bubbles.length).toBeLessThanOrEqual(5);
+    expect(reply.bubbles.length).toBeLessThanOrEqual(type === 'education' ? 6 : 5);
     expect(reply.bubbles.every((bubble) => bubble.length <= 400)).toBe(true);
     expect(reply.sources).toHaveLength(records.length);
     for (const record of records) {
@@ -56,8 +57,8 @@ describe('grounded conversational composition', () => {
   });
 
   it('orders dated education newest-first without changing source content', () => {
-    const records = getRecords().filter((record) => record.type === 'education');
-    const hits = records.map((record, index) => ({
+    const records = getRecords().filter((record) => record.type === 'education' && !record.id.endsWith('-languages'));
+    const hits = getRecords().filter((record) => record.type === 'education').map((record, index) => ({
       record: { ...record, text: `Period: ${2020 - index}\n${record.text}` }, score: 1,
     }));
     const reply = composeReply([...hits].reverse(), 'education');

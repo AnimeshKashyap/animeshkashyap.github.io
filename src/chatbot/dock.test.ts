@@ -83,24 +83,24 @@ describe('quick action dock', () => {
         }
       }
     }
-    expect(dockStyles).toContain('var(--tip-origin) - var(--side-sign) * var(--index) * 46px');
+    expect(dockStyles).toContain('var(--tip-origin) - var(--side-sign) * var(--index) * 58px');
     expect(dockStyles).toContain('top: auto; bottom: calc(100% + 8px)');
     expect(dockStyles).toContain(':focus-visible::after');
   });
 
   it('centers the closed buttons with the 56px launcher', () => {
     expect(dockStyles).toContain('left: var(--side-left); right: var(--side-right)');
-    expect(dockStyles).toContain('width: 40px; height: 40px');
-    expect(8 + 40 + 8).toBe(56);
+    expect(dockStyles).toContain('width: 46px; height: 46px');
+    expect(5 + 46 + 5).toBe(56);
   });
 
   it('moves the dock and buttons with transforms and honors reduced motion', () => {
     expect(dockStyles).toContain('.launcher[aria-expanded="true"] ~ .quick-dock');
-    expect(dockStyles).toContain('transform: translate(calc(var(--side-sign) * var(--dock-x, 8px)), var(--dock-y, 0px))');
+    expect(dockStyles).toContain('transform: translate(calc(var(--side-sign) * var(--dock-x, 5px)), var(--dock-y, 0px))');
     expect(dockStyles).toContain('transition: transform 240ms ease');
     expect(dockStyles).not.toMatch(/transition:\s*[^;]*(?:left|bottom)/);
-    expect(dockStyles).toContain('translateY(calc(var(--index) * -46px))');
-    expect(dockStyles).toContain('translateX(calc(var(--side-sign) * var(--index) * 46px))');
+    expect(dockStyles).toContain('translateY(calc(var(--index) * -58px))');
+    expect(dockStyles).toContain('translateX(calc(var(--side-sign) * var(--index) * 58px))');
     expect(dockStyles).toContain('@media (prefers-reduced-motion: reduce)');
     expect(dockStyles).toContain('.quick-dock, .quick-dock__button { transition: none; }');
     expect(dockStyles).not.toContain('top: calc(100% + 8px); bottom: auto');

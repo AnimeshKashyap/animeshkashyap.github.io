@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Reply } from '../types';
 import { mountLauncher } from '../launcher';
-import { CHATBOT_CONFIG, CHATBOT_KEYWORDS } from '../config';
+import { CHATBOT_KEYWORDS } from '../config';
 import {
   installBrowserGlobals,
   registerElementById,
@@ -20,7 +20,6 @@ const panelSource = readFileSync(join(panelDir, 'panel.ts'), 'utf8');
 const chatbotReadme = readFileSync(join(panelDir, '../README.md'), 'utf8');
 
 const HISTORY_KEY = 'portfolio-chatbot-history:main';
-const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
 
 const engineBehavior = {
   ask: vi.fn<(query: string) => Promise<Reply>>(),
@@ -55,6 +54,8 @@ function mountHost(): { host: MockElement; launcher: MockElement; shadow: MockSh
   (document.body as unknown as MockElement).appendChild(host);
   const launcher = mountLauncher(host as unknown as HTMLElement, 'main') as unknown as MockElement;
   const shadow = host.shadowRoot!;
+  // The hint bubble shows on every load; dismiss it so its auto-hide timer does not skew timer assertions.
+  shadow.querySelector('.launcher-bubble__dismiss')?.click();
   return { host, launcher, shadow };
 }
 
@@ -85,6 +86,7 @@ describe('chat panel', () => {
     engineBehavior.ask.mockReset();
     engineBehavior.ask.mockResolvedValue(makeReply({ text: 'Assistant response' }));
     ({ openPanel, isPanelOpen } = await loadPanelApi());
+    browser.setReducedMotion(true);
   });
 
   afterEach(() => {
@@ -95,7 +97,6 @@ describe('chat panel', () => {
   async function autocomplete(prefix = 'what') {
     // Keep window's bound timer functions on the same clock as global timers.
     if (!vi.isFakeTimers()) vi.useFakeTimers();
-    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
     const { shadow } = mountHost();
     openPanel();
     const input = shadow.querySelector('.chat-panel__input')!;
@@ -616,73 +617,22 @@ describe('chat panel', () => {
 
 
 
-  it.each(['legacy', 'bubbles'] as const)('restores %s session history without replaying reveal', async (format) => {
-    vi.useFakeTimers();
-    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
-    const reply: Partial<Reply> = makeReply({ text: 'Stored answer' });
-    if (format === 'legacy') {
-      delete reply.bubbles;
-    } else {
-      reply.bubbles = ['Stored answer', 'Second bubble'];
-      reply.text = 'Stale compatibility text';
-    }
-    const stored = [
+  it('starts a new chat on every load, discarding stored session history', () => {
+    browser.sessionData.set(HISTORY_KEY, JSON.stringify([
       { kind: 'user', text: 'Stored question' },
-      {
-        kind: 'bot',
-        reply,
-      },
-    ];
-    browser.sessionData.set(HISTORY_KEY, JSON.stringify(stored));
-
+      { kind: 'bot', reply: makeReply({ text: 'Stored answer' }) },
+    ]));
     const { shadow } = mountHost();
     openPanel();
 
     const panel = getPanel(shadow);
-    expect(panel.textContent).toContain('Stored question');
-    expect(panel.querySelectorAll('.chat-msg--bot').map((row) =>
-      row.querySelector('.chat-msg__bubble')?.textContent,
-    )).toEqual(format === 'legacy' ? ['Stored answer'] : ['Stored answer', 'Second bubble']);
-    expect(panel.textContent).not.toContain('Stale compatibility text');
-    expect(panel.querySelectorAll('.chat-msg__source-chip').map((chip) => chip.textContent))
-      .toEqual(['Profile']);
-    expect(panel.querySelectorAll('.chat-chip--action').map((chip) => chip.textContent))
-      .toEqual([CHATBOT_CONFIG.actions.linkedin.label]);
-    expect(panel.querySelectorAll('.chat-chip--suggestion').map((chip) => chip.textContent))
-      .toEqual(['Follow up question?']);
-    expect(panel.querySelector('.chat-panel__typing')).toBeNull();
-    expect(vi.getTimerCount()).toBe(0);
-    await Promise.resolve();
-    expect(vi.getTimerCount()).toBe(0);
+    expect(panel.textContent).not.toContain('Stored question');
+    expect(panel.textContent).not.toContain('Stored answer');
+    expect(panel.querySelector('.chat-msg--user')).toBeNull();
+    expect(browser.sessionData.has(HISTORY_KEY)).toBe(false);
+    expect(collectDescendants(panel).filter((n) => n.classList.contains('chat-chip--suggestion')))
+      .toHaveLength(8);
     expect(engineBehavior.ask).not.toHaveBeenCalled();
-    expect(browser.sessionData.get(HISTORY_KEY)).toBe(JSON.stringify(stored));
-
-    const welcomeSuggestions = collectDescendants(getPanel(shadow)).filter(
-      (node) =>
-        node.classList.contains('chat-chip--suggestion') &&
-        CHATBOT_CONFIG.suggestedQuestions.includes(node.textContent),
-    );
-    expect(welcomeSuggestions).toHaveLength(0);
-    expect(getPanel(shadow).querySelector('.chat-msg__bubble--reveal')).toBeNull();
-  });
-
-  it('restores and sends legacy sentence suggestions unchanged', async () => {
-    const sentence = 'Tell me about his work experience.';
-    const reply: Partial<Reply> = makeReply({ suggestions: [sentence] });
-    delete reply.bubbles;
-    browser.sessionData.set(HISTORY_KEY, JSON.stringify([{ kind: 'bot', reply }]));
-    const { shadow } = mountHost();
-    openPanel();
-
-    const panel = getPanel(shadow);
-    const chips = panel.querySelectorAll('.chat-chip--suggestion');
-    expect(chips.map((chip) => chip.textContent)).toEqual([sentence]);
-    expect(engineBehavior.ask).not.toHaveBeenCalled();
-    chips[0].click();
-    expect(panel.querySelector('.chat-msg--user')?.textContent).toBe(sentence);
-    await vi.waitFor(() => expect(engineBehavior.ask).toHaveBeenCalledWith(sentence));
-    await vi.waitFor(() => expect(shadow.querySelector('.chat-panel__typing')).toBeNull());
-    expect(browser.sessionData.get(HISTORY_KEY)).toContain(sentence);
   });
 
   it('returns empty history when sessionStorage read throws', async () => {
@@ -770,27 +720,6 @@ describe('chat panel', () => {
     ).toHaveLength(8);
   });
 
-  it('clears conversation, storage, and restores welcome', async () => {
-    browser.sessionData.set(
-      HISTORY_KEY,
-      JSON.stringify([{ kind: 'user', text: 'Old message' }]),
-    );
-
-    const { shadow } = mountHost();
-    openPanel();
-    await vi.waitFor(() => expect(getPanel(shadow).textContent).toContain('Old message'));
-
-    const clearBtn = [...collectDescendants(getPanel(shadow))].find(
-      (node) => node.getAttribute('aria-label') === 'Reset chat',
-    );
-    clearBtn?.click();
-
-    expect(browser.sessionData.has(HISTORY_KEY)).toBe(false);
-    expect(getPanel(shadow).textContent).not.toContain('Old message');
-    expect(collectDescendants(getPanel(shadow)).filter((n) => n.classList.contains('chat-chip--suggestion')))
-      .toHaveLength(8);
-  });
-
   it.each(['reset', 'close', 'Escape'])('cancels late engine replies on %s', async (control) => {
     let resolveAsk!: (reply: Reply) => void;
     engineBehavior.ask.mockImplementation(
@@ -831,7 +760,6 @@ describe('chat panel', () => {
     vi.useFakeTimers();
     browser.reset();
     browser = installBrowserGlobals();
-    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
     browser.setReducedMotion(false);
     const { shadow } = mountHost();
     openPanel();
@@ -858,7 +786,6 @@ describe('chat panel', () => {
     vi.useFakeTimers();
     browser.reset();
     browser = installBrowserGlobals();
-    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
     browser.setReducedMotion(reduced);
     engineBehavior.ask.mockResolvedValue(makeReply({ bubbles: ['First', 'Second'] }));
     const { shadow } = mountHost();
@@ -872,7 +799,7 @@ describe('chat panel', () => {
     await vi.advanceTimersByTimeAsync(0);
     if (!reduced) {
       expect(input.disabled).toBe(true);
-      await vi.advanceTimersByTimeAsync(399);
+      await vi.advanceTimersByTimeAsync(2999);
       expect(input.disabled).toBe(true);
       expect(panel.textContent).not.toContain('Follow up question?');
       expect(browser.sessionData.get(HISTORY_KEY)).not.toContain('First');
@@ -899,7 +826,6 @@ describe('chat panel', () => {
   });
 
   it('launcher open, close, and reopen keeps history and syncs focus and aria each step', async () => {
-    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
     const { launcher, shadow } = mountHost();
 
     expect(launcher.getAttribute('aria-expanded')).toBe('false');
@@ -1058,7 +984,6 @@ describe('chat panel', () => {
   });
 
   it('keeps the dock as a launcher sibling and switches its CSS state on open and close', async () => {
-    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
     const { launcher, shadow } = mountHost();
     const wrap = shadow.querySelector('.launcher-wrap')!;
     const dock = wrap.querySelector('.quick-dock')!;

@@ -32,11 +32,11 @@ export const CHATBOT_KEYWORDS: { label: string; query: string }[] = [
 ];
 
 export const CHATBOT_CONFIG = {
-  launcherSide: 'left' as 'left' | 'right',
+  launcherSide: 'right' as 'left' | 'right',
   greeting:
     "Hi — I'm the portfolio assistant for Animesh Kashyap. Ask about his experience, skills, projects, education, or how to get in touch.",
   /** Short copy for the once-per-session bubble beside the launcher button. */
-  launcherBubbleText: 'Ask about experience, skills, projects, or how to get in touch.',
+  launcherBubbleText: "Hi! Ask me anything about Animesh's experience, skills or projects.",
   suggestedQuestions: CHATBOT_KEYWORDS.slice(0, 4).map(({ label }) => label),
   retrievalThreshold: CHATBOT_RETRIEVAL_THRESHOLD,
   actions: {

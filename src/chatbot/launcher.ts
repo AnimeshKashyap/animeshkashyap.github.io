@@ -2,8 +2,8 @@ import { matchCompactMode, resolveCompactStyles } from './compact';
 import { CHATBOT_CONFIG } from './config';
 import { createDock, dockStyles, mountMoreToggle } from './dock';
 
-const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
 const LAUNCHER_BUBBLE_AUTO_HIDE_MS = 8000;
+const TOOLTIPS_RESUME_MS = 2000;
 
 const LAUNCHER_STYLE_BODY = `
 :host {
@@ -32,7 +32,7 @@ const LAUNCHER_STYLE_BODY = `
   position: fixed;
   left: var(--side-left);
   right: var(--side-right);
-  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  bottom: max(44px, env(safe-area-inset-bottom, 0px));
   z-index: 30;
   display: flex;
   flex-direction: column-reverse;
@@ -116,15 +116,22 @@ const LAUNCHER_STYLE_BODY = `
   background: var(--bg-raised, #0b0f1a);
   pointer-events: none;
   opacity: 0;
-  transition: opacity 180ms ease;
+  transition: opacity 200ms ease;
 }
 .launcher:hover::after, .launcher:focus-visible::after { opacity: 1; }
+
+/* Tooltips stay visible while the chat is closed, except during scrolling (data-tips is toggled in mountLauncher). */
+@media (--chatbot-desktop) {
+  .launcher-wrap[data-tips] .launcher[aria-expanded="false"]::after,
+  .launcher-wrap[data-tips] .launcher[aria-expanded="false"] ~ .quick-dock .quick-dock__button::after { opacity: 1; }
+}
 
 .launcher-bubble {
   position: absolute;
   left: var(--tip-left);
   right: var(--tip-right);
   bottom: 28px;
+  z-index: 2;
   box-sizing: border-box;
   display: flex;
   align-items: flex-start;
@@ -132,16 +139,20 @@ const LAUNCHER_STYLE_BODY = `
   width: 260px;
   max-width: max(0px, calc(100vw - var(--side-offset) - var(--opposite-offset) - 64px));
   overflow-wrap: anywhere;
-  margin: 0;
-  padding: 10px 10px 10px 12px;
+  margin: 0 8px;
+  padding: 12px 10px 12px 14px;
   border-radius: var(--radius-md, 14px);
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border: 1.5px solid var(--accent-violet, #a78bfa);
   font-family: var(--font-body, 'Inter', system-ui, sans-serif);
   font-size: 13px;
+  font-weight: 600;
   line-height: 1.4;
   color: var(--text-primary, #eef1f8);
   background: var(--bg-raised, #0b0f1a);
-  box-shadow: var(--shadow-card, 0 20px 60px rgba(0, 0, 0, 0.35));
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent-violet, #a78bfa) 18%, transparent),
+    var(--shadow-card, 0 20px 60px rgba(0, 0, 0, 0.35));
+  animation: launcher-bubble-nudge 2.4s ease-in-out 0.6s 3;
   opacity: 1;
   transform: translateY(50%);
   transition:
@@ -227,6 +238,16 @@ const LAUNCHER_STYLE_BODY = `
   outline-offset: 2px;
 }
 
+@keyframes launcher-bubble-nudge {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: calc(var(--side-sign) * 5px) 0;
+  }
+}
+
 @keyframes launcher-idle {
   0%,
   100% {
@@ -253,6 +274,7 @@ const LAUNCHER_STYLE_BODY = `
 
   .launcher-bubble {
     transition: none;
+    animation: none;
   }
 
   .launcher::after { transition: none; }
@@ -296,22 +318,6 @@ export function buildLauncherStyles(page: 'main' | 'v4'): string {
   return resolveCompactStyles(`${launcherHostStyles(page)}${LAUNCHER_STYLE_BODY}${dockStyles}`);
 }
 
-function launcherBubbleSeen(): boolean {
-  try {
-    return sessionStorage.getItem(LAUNCHER_BUBBLE_SESSION_KEY) === '1';
-  } catch {
-    return true;
-  }
-}
-
-function markLauncherBubbleSeen(): void {
-  try {
-    sessionStorage.setItem(LAUNCHER_BUBBLE_SESSION_KEY, '1');
-  } catch {
-    // sessionStorage may be unavailable
-  }
-}
-
 type LauncherBubbleState = {
   bubble: HTMLElement;
   autoHideId: ReturnType<typeof setTimeout> | undefined;
@@ -323,12 +329,12 @@ function hideLauncherBubble(state: LauncherBubbleState): void {
     state.autoHideId = undefined;
   }
   state.bubble.setAttribute('hidden', '');
-  markLauncherBubbleSeen();
 }
 
 function maybeMountLauncherBubble(wrap: HTMLElement): LauncherBubbleState | undefined {
   const compact = matchCompactMode();
-  if (compact.matches || launcherBubbleSeen()) {
+  // Shown on every page load (no session memory) so visitors always see the hint.
+  if (compact.matches) {
     return undefined;
   }
 
@@ -349,7 +355,6 @@ function maybeMountLauncherBubble(wrap: HTMLElement): LauncherBubbleState | unde
 
   bubble.append(text, dismiss);
   wrap.appendChild(bubble);
-  markLauncherBubbleSeen();
 
   const state: LauncherBubbleState = { bubble, autoHideId: undefined };
 
@@ -406,8 +411,6 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
     collapseMore();
     if (bubbleState !== undefined && !bubbleState.bubble.hasAttribute('hidden')) {
       hideLauncherBubble(bubbleState);
-    } else if (!launcherBubbleSeen()) {
-      markLauncherBubbleSeen();
     }
     void import('./panel/panel').then(({ togglePanel }) => {
       togglePanel();
@@ -415,6 +418,14 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
   });
 
   wrap.appendChild(button);
+  // Tooltips are visible until the visitor scrolls; they return TOOLTIPS_RESUME_MS after scrolling stops.
+  wrap.setAttribute('data-tips', '');
+  let tipsTimer: ReturnType<typeof setTimeout> | undefined;
+  window.addEventListener('scroll', () => {
+    wrap.removeAttribute('data-tips');
+    clearTimeout(tipsTimer);
+    tipsTimer = setTimeout(() => wrap.setAttribute('data-tips', ''), TOOLTIPS_RESUME_MS);
+  }, { passive: true, capture: true });
   const dock = createDock(page);
   wrap.appendChild(dock);
   collapseMore = mountMoreToggle(wrap, dock);

@@ -13,7 +13,6 @@ import {
   type MockShadowRoot,
 } from './panel/fixtures/browser-globals';
 
-const LAUNCHER_BUBBLE_SESSION_KEY = 'portfolio-chatbot-launcher-bubble-seen';
 const LAUNCHER_BUBBLE_AUTO_HIDE_MS = 8000;
 
 vi.mock('./panel/panel', () => ({
@@ -41,7 +40,7 @@ function getBubble(shadow: MockShadowRoot): MockElement | null {
 
 describe('buildLauncherStyles', () => {
   it('shares panel and greeting anchors and keeps launcher labels inward at safe edges', () => {
-    expect(CHATBOT_CONFIG.launcherSide).toBe('left');
+    expect(CHATBOT_CONFIG.launcherSide).toBe('right');
     const styles = buildLauncherStyles('main');
     expect(panelStyles).toContain('left: var(--side-left)');
     expect(panelStyles).toContain('right: var(--side-right)');
@@ -174,10 +173,29 @@ describe('mountLauncher greeting bubble', () => {
     const { shadow } = mountLauncherOnPage(page);
     expect(getBubble(shadow)).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
-    expect(browser.sessionData.has(LAUNCHER_BUBBLE_SESSION_KEY)).toBe(false);
     expect(buildLauncherStyles(page)).toContain('@media (max-width: 479px), (max-height: 499px)');
     expect(buildLauncherStyles(page)).toContain('.launcher-bubble { display: none; }');
     expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 479px), (max-height: 499px)');
+  });
+
+  it('keeps tooltips visible until scrolling and restores them 2s after scrolling stops', () => {
+    vi.useFakeTimers();
+    const { shadow } = mountLauncherOnPage('main');
+    const wrap = shadow.querySelector('.launcher-wrap')!;
+    const scroll = (): void => (window as unknown as { windowListeners: Map<string, (() => void)[]> })
+      .windowListeners.get('scroll')!.forEach((listener) => listener());
+    expect(wrap.hasAttribute('data-tips')).toBe(true);
+    scroll();
+    expect(wrap.hasAttribute('data-tips')).toBe(false);
+    vi.advanceTimersByTime(1500);
+    scroll();
+    vi.advanceTimersByTime(1999);
+    expect(wrap.hasAttribute('data-tips')).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(wrap.hasAttribute('data-tips')).toBe(true);
+    const styles = buildLauncherStyles('main');
+    expect(styles).toContain('.launcher-wrap[data-tips] .launcher[aria-expanded="false"]::after');
+    expect(styles).toMatch(/\.launcher-bubble \{[^}]*z-index: 2;/);
   });
 
   it('hides and cancels the timer on entering compact mode, never resurrecting the greeting', () => {
@@ -256,15 +274,7 @@ describe('mountLauncher greeting bubble', () => {
     }
   });
 
-  it('does not mount a bubble when the session flag is already set', () => {
-    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
-
-    const { shadow } = mountLauncherOnPage('main');
-
-    expect(getBubble(shadow)).toBeNull();
-  });
-
-  it('shows an accessible bubble on first mount and records seen immediately', () => {
+  it('shows an accessible bubble on every load until the user engages', () => {
     const { shadow } = mountLauncherOnPage('main');
     const bubble = getBubble(shadow);
 
@@ -277,7 +287,6 @@ describe('mountLauncher greeting bubble', () => {
     expect(shadow.querySelector('.launcher-bubble__dismiss')?.getAttribute('aria-label')).toBe(
       'Dismiss assistant hint',
     );
-    expect(browser.sessionData.get(LAUNCHER_BUBBLE_SESSION_KEY)).toBe('1');
   });
 
   it('shows the same bubble on v4 first mount', () => {
@@ -285,14 +294,6 @@ describe('mountLauncher greeting bubble', () => {
 
     expect(getBubble(shadow)).not.toBeNull();
     expect(launcher.getAttribute('aria-label')).toBe('Open chat');
-  });
-
-  it('does not show a bubble on v4 when the session flag exists', () => {
-    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
-
-    const { shadow } = mountLauncherOnPage('v4');
-
-    expect(getBubble(shadow)).toBeNull();
   });
 
   it.each(['main', 'v4'] as const)('preserves the unseen session from mobile to a desktop mount on %s', (page) => {
@@ -305,7 +306,6 @@ describe('mountLauncher greeting bubble', () => {
     media.mockReturnValue({ matches: false } as MediaQueryList);
     expect(getBubble(mountLauncherOnPage(page).shadow)).not.toBeNull();
     expect(vi.getTimerCount()).toBe(1);
-    expect(browser.sessionData.get(LAUNCHER_BUBBLE_SESSION_KEY)).toBe('1');
   });
 
   it.each(['main', 'v4'] as const)('keeps dismissal final across page variants after starting on %s', (page) => {
@@ -318,7 +318,8 @@ describe('mountLauncher greeting bubble', () => {
     expect(togglePanel).not.toHaveBeenCalled();
 
     const otherPage = page === 'main' ? 'v4' : 'main';
-    expect(getBubble(mountLauncherOnPage(otherPage).shadow)).toBeNull();
+    // Dismissal is per page load: a fresh mount (reload) shows the hint again.
+    expect(getBubble(mountLauncherOnPage(otherPage).shadow)).not.toBeNull();
     vi.advanceTimersByTime(LAUNCHER_BUBBLE_AUTO_HIDE_MS);
     expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
@@ -333,7 +334,6 @@ describe('mountLauncher greeting bubble', () => {
     expect(vi.getTimerCount()).toBe(0);
     await vi.waitFor(() => expect(togglePanel).toHaveBeenCalledTimes(1));
     expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
-    expect(browser.sessionData.get(LAUNCHER_BUBBLE_SESSION_KEY)).toBe('1');
   });
 
   it('hides the bubble when dismiss is clicked', () => {
@@ -344,7 +344,6 @@ describe('mountLauncher greeting bubble', () => {
     shadow.querySelector('.launcher-bubble__dismiss')?.click();
 
     expect(bubble?.hasAttribute('hidden')).toBe(true);
-    expect(browser.sessionData.get(LAUNCHER_BUBBLE_SESSION_KEY)).toBe('1');
   });
 
   it('hides the bubble when the launcher is clicked', async () => {
@@ -360,9 +359,8 @@ describe('mountLauncher greeting bubble', () => {
   });
 
   it('calls togglePanel once when the launcher is clicked and no bubble is shown', async () => {
-    browser.sessionData.set(LAUNCHER_BUBBLE_SESSION_KEY, '1');
-
-    const { launcher } = mountLauncherOnPage('main');
+    const { launcher, shadow } = mountLauncherOnPage('main');
+    shadow.querySelector('.launcher-bubble__dismiss')!.click();
     launcher.click();
 
     await vi.waitFor(() => {
@@ -382,37 +380,7 @@ describe('mountLauncher greeting bubble', () => {
     expect(bubble?.hasAttribute('hidden')).toBe(true);
   });
 
-  it('skips the bubble when sessionStorage read throws', () => {
-    const originalGetItem = sessionStorage.getItem.bind(sessionStorage);
-    sessionStorage.getItem = () => {
-      throw new Error('sessionStorage denied');
-    };
-
-    const { shadow } = mountLauncherOnPage('main');
-
-    expect(getBubble(shadow)).toBeNull();
-
-    sessionStorage.getItem = originalGetItem;
-  });
-
-  it('still mounts the bubble when sessionStorage.setItem throws while marking seen', () => {
-    const originalSetItem = sessionStorage.setItem.bind(sessionStorage);
-    sessionStorage.setItem = (key: string, value: string) => {
-      if (key === LAUNCHER_BUBBLE_SESSION_KEY) {
-        throw new Error('quota exceeded');
-      }
-      originalSetItem(key, value);
-    };
-
-    const { shadow } = mountLauncherOnPage('main');
-
-    expect(getBubble(shadow)).not.toBeNull();
-    expect(browser.sessionData.has(LAUNCHER_BUBBLE_SESSION_KEY)).toBe(false);
-
-    sessionStorage.setItem = originalSetItem;
-  });
-
-  it('does not show the bubble again on a second mount in the same session after first visit', () => {
+  it('shows the bubble again on every mount (reload)', () => {
     const first = mountLauncherOnPage('main');
     expect(getBubble(first.shadow)).not.toBeNull();
 
@@ -424,6 +392,7 @@ describe('mountLauncher greeting bubble', () => {
     if (secondShadow === null) {
       throw new Error('expected open shadow root');
     }
-    expect(getBubble(secondShadow)).toBeNull();
+    expect(getBubble(secondShadow)).not.toBeNull();
   });
+
 });

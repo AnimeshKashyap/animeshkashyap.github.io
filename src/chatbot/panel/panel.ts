@@ -596,6 +596,13 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
     }
   });
 
+  // Every page load starts a new chat: drop any history stored by an earlier load.
+  try {
+    sessionStorage.removeItem(historyStorageKey());
+  } catch {
+    // sessionStorage may be unavailable
+  }
+
   void restoreMessageHistory(elements).then(() => {
     if (elements.log.childElementCount === 0) {
       ensureWelcome(elements);

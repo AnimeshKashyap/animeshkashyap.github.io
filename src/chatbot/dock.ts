@@ -13,12 +13,12 @@ export const dockStyles = resolveCompactStyles(`
 .quick-dock {
   position: fixed; z-index: 31;
   left: var(--side-left); right: var(--side-right);
-  bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 66px);
-  width: 40px; height: 40px;
-  transform: translate(calc(var(--side-sign) * var(--dock-x, 8px)), var(--dock-y, 0px));
+  bottom: calc(max(44px, env(safe-area-inset-bottom, 0px)) + 66px);
+  width: 46px; height: 46px;
+  transform: translate(calc(var(--side-sign) * var(--dock-x, 5px)), var(--dock-y, 0px));
   transition: transform 240ms ease, opacity 240ms ease;
 }
-.quick-dock__button { position: absolute; left: 0; bottom: 0; transform: translateY(calc(var(--index) * -46px)); transition: transform 240ms ease; }
+.quick-dock__button { position: absolute; left: 0; bottom: 0; transform: translateY(calc(var(--index) * -58px)); transition: transform 240ms ease; }
 .quick-dock__button:nth-child(1) { --index: 0; }
 .quick-dock__button:nth-child(2) { --index: 1; }
 .quick-dock__button:nth-child(3) { --index: 2; }
@@ -26,13 +26,13 @@ export const dockStyles = resolveCompactStyles(`
 .quick-dock__button:nth-child(5) { --index: 4; }
 .launcher[aria-expanded="true"] ~ .quick-dock {
   --dock-x: 0px;
-  --dock-y: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 66px - 100dvh + max(16px, env(safe-area-inset-top, 0px)) + 40px);
+  --dock-y: calc(max(44px, env(safe-area-inset-bottom, 0px)) + 66px - 100dvh + max(16px, env(safe-area-inset-top, 0px)) + 46px);
 }
-.launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button { transform: translateX(calc(var(--side-sign) * var(--index) * 46px)); }
+.launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button { transform: translateX(calc(var(--side-sign) * var(--index) * 58px)); }
 @media (--chatbot-desktop) {
   .launcher[aria-expanded="true"] ~ .quick-dock {
     --dock-x: 0px;
-    --dock-y: calc(-12px - min(560px, 100dvh - max(16px, env(safe-area-inset-bottom, 0px)) - 56px - 12px - max(16px, env(safe-area-inset-top, 0px)) - 60px));
+    --dock-y: calc(-12px - min(560px, 100dvh - max(44px, env(safe-area-inset-bottom, 0px)) - 56px - 12px - max(16px, env(safe-area-inset-top, 0px)) - 60px));
   }
 }
 
@@ -41,27 +41,27 @@ export const dockStyles = resolveCompactStyles(`
 }
 .quick-dock__button {
   display: grid; place-items: center; box-sizing: border-box;
-  width: 40px; height: 40px; padding: 0; border-radius: 50%; cursor: pointer;
+  width: 46px; height: 46px; padding: 0; border-radius: 50%; cursor: pointer;
   border: none;
   color: var(--text-primary, #eef1f8); background: var(--bg-raised, #0b0f1a);
   box-shadow: inset 0 0 0 1px var(--border, rgba(255,255,255,.12)), var(--shadow-card, 0 8px 24px rgba(0,0,0,.35));
 }
 .quick-dock__button:hover { color: var(--accent-cyan, #5eead4); }
 .quick-dock__button:focus-visible { outline: 2px solid var(--accent-cyan, #5eead4); outline-offset: 3px; }
-.quick-dock__button svg { width: 20px; height: 20px; }
+.quick-dock__button svg { width: 23px; height: 23px; }
 .quick-dock__button::after {
   content: attr(data-tooltip); position: absolute; left: var(--tip-left); right: var(--tip-right); top: 50%;
   transform: translateY(-50%); pointer-events: none; opacity: 0;
   box-sizing: border-box; width: max-content;
   max-width: max(0px, calc(100vw - var(--side-offset) - var(--opposite-offset) - 56px));
-  transition: opacity 180ms ease;
+  transition: opacity 200ms ease;
   overflow-wrap: anywhere;
   padding: 5px 8px; border-radius: 6px; font: 12px var(--font-body, system-ui, sans-serif);
   color: var(--text-primary, #eef1f8); background: var(--bg-raised, #0b0f1a);
   border: 1px solid var(--border, rgba(255,255,255,.12));
 }
 .launcher[aria-expanded="true"] ~ .quick-dock .quick-dock__button::after {
-  left: calc(var(--tip-origin) - var(--side-sign) * var(--index) * 46px); right: auto; top: auto; bottom: calc(100% + 8px); transform: translateX(calc(-1 * var(--tip-origin)));
+  left: calc(var(--tip-origin) - var(--side-sign) * var(--index) * 58px); right: auto; top: auto; bottom: calc(100% + 8px); transform: translateX(calc(-1 * var(--tip-origin)));
   max-width: calc(100vw - var(--side-offset) - var(--opposite-offset));
 }
 @media (prefers-reduced-motion: reduce) {
@@ -72,17 +72,17 @@ export const dockStyles = resolveCompactStyles(`
 @media (--chatbot-compact) {
   .quick-dock__more {
     display: grid; place-items: center; box-sizing: border-box; flex-shrink: 0;
-    width: 40px; height: 40px; padding: 0; border: none; border-radius: 50%; cursor: pointer;
+    width: 46px; height: 46px; padding: 0; border: none; border-radius: 50%; cursor: pointer;
     color: var(--text-primary, #eef1f8); background: var(--bg-raised, #0b0f1a);
     box-shadow: inset 0 0 0 1px var(--border, rgba(255,255,255,.12)), var(--shadow-card, 0 8px 24px rgba(0,0,0,.35));
   }
   .quick-dock__more:focus-visible { outline: 2px solid var(--accent-cyan, #5eead4); outline-offset: 3px; }
   .quick-dock__more svg { width: 20px; height: 20px; transition: transform 240ms ease; }
   .quick-dock__more[aria-expanded="true"] svg { transform: rotate(180deg); }
-  .quick-dock { bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 116px); --dock-x: 0px; }
+  .quick-dock { bottom: calc(max(44px, env(safe-area-inset-bottom, 0px)) + 122px); --dock-x: 0px; }
   .quick-dock:not([data-open]) { visibility: hidden; pointer-events: none; transition: visibility 0s 240ms; }
   .quick-dock:not([data-open]) .quick-dock__button { transform: none; opacity: 0; }
-  .quick-dock[data-open] .quick-dock__button { transform: translateY(calc(var(--index) * -46px)); opacity: 1; transition-delay: calc(var(--index) * 30ms); }
+  .quick-dock[data-open] .quick-dock__button { transform: translateY(calc(var(--index) * -58px)); opacity: 1; transition-delay: calc(var(--index) * 30ms); }
   .quick-dock__button { transition: transform 240ms ease, opacity 240ms ease; }
   .quick-dock__button::after { display: none; }
 }
