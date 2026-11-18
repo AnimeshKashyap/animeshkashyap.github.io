@@ -1,5 +1,5 @@
 import panelCss from './panel.css?inline';
-import { matchCompactMode, resolveCompactStyles } from '../compact';
+import { FLOATING_CHIPS_QUERY, matchCompactMode, resolveCompactStyles } from '../compact';
 import { suggest } from '../engine/suggestions';
 import { runAction, type ActionContext } from '../engine/actions';
 import {
@@ -242,6 +242,7 @@ function resetConversation(elements: PanelElements): void {
   messageHistory = [];
   persistMessageHistory();
   clearMessageLog(elements.log);
+  elements.chips.replaceChildren();
   ensureWelcome(elements);
 }
 
@@ -329,7 +330,10 @@ function focusInput(input: HTMLInputElement): void {
 
 function ensureWelcome(elements: PanelElements): void {
   if (elements.log.childElementCount === 0) {
-    appendWelcomeMessage(elements.log, elements.handlers, elements.chips);
+    // Floating chips need room beside the panel; otherwise the welcome chips sit under the greeting,
+    // where all of them are visible together instead of in the small strip above the input.
+    const floating = window.matchMedia(FLOATING_CHIPS_QUERY).matches;
+    appendWelcomeMessage(elements.log, elements.handlers, floating ? elements.chips : undefined);
   }
 }
 
@@ -661,20 +665,31 @@ function mountPanel(shadow: ShadowRoot): PanelElements {
   return elements;
 }
 
-function showPanel(elements: PanelElements): void {
+export type OpenPanelOptions = {
+  /** Focus the input on open (default true). Skip on automatic opens to keep the mobile keyboard down. */
+  focus?: boolean;
+  /** Crossfade in over the page instead of appearing instantly (automatic opens). */
+  fade?: boolean;
+};
+
+function showPanel(elements: PanelElements, { focus = true, fade = false }: OpenPanelOptions = {}): void {
   lockCompactViewport(elements.root);
   watchBreakpoint(elements.root);
   panelVisible = true;
+  if (fade) {
+    elements.root.classList.add('chat-panel--fade-in');
+    elements.root.addEventListener('animationend', () => elements.root.classList.remove('chat-panel--fade-in'), { once: true });
+  }
   setPanelHidden(elements.root, false);
   syncLauncherExpanded(true);
   if (elements.log.childElementCount === 0) {
     ensureWelcome(elements);
   }
-  focusInput(elements.input);
+  if (focus) focusInput(elements.input);
 }
 
 /** Opens (or restores) the chat panel inside the launcher shadow root. */
-export function openPanel(): void {
+export function openPanel(options: OpenPanelOptions = {}): void {
   const shadow = getChatbotShadow();
   if (shadow === null) {
     return;
@@ -691,7 +706,7 @@ export function openPanel(): void {
   }
 
   if (!panelVisible) {
-    showPanel(panelElements);
+    showPanel(panelElements, options);
   }
 }
 

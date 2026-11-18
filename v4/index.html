@@ -9,6 +9,21 @@
     />
     <meta name="theme-color" content="#0b1026" />
     <title>Animesh Kashyap — v4</title>
+    <style>
+      /* Phones/compact screens open the chat by default: cover the page until the chat is ready
+         (released in src/chatbot/index.ts once the chat has faded in; the timeout below is a failsafe). */
+      html.chatbot-booting::before { content: ''; position: fixed; inset: 0; z-index: 55; background: #0b1026; }
+      html.chatbot-booting::after { content: ''; position: fixed; top: 50%; left: 50%; width: 28px; height: 28px; margin: -14px 0 0 -14px; z-index: 56; box-sizing: border-box; border: 3px solid #60a5fa; border-top-color: transparent; border-radius: 50%; animation: chatbot-boot-spin 800ms linear infinite; }
+      @keyframes chatbot-boot-spin { to { transform: rotate(360deg); } }
+    </style>
+    <script>
+      (function () {
+        if (!window.matchMedia('(max-width: 479px), (max-height: 499px)').matches) return;
+        var root = document.documentElement;
+        root.classList.add('chatbot-booting');
+        setTimeout(function () { root.classList.remove('chatbot-booting'); }, 6000);
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>
