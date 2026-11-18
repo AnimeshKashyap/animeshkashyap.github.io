@@ -171,6 +171,16 @@ const LAUNCHER_STYLE_BODY = `
   visibility: hidden;
 }
 
+@media (width < 480px) {
+  .launcher-bubble { display: none; }
+}
+
+/* Hide synchronously, including programmatic panel opens and tooltip-producing focus. */
+.launcher-wrap:has(.launcher[aria-expanded="true"]) .launcher-bubble,
+.launcher-wrap:has(.launcher:hover, .launcher:focus-visible, .quick-dock:hover, .quick-dock:focus-within) .launcher-bubble {
+  display: none;
+}
+
 @starting-style {
   .launcher-bubble:not([hidden]) {
     opacity: 0;
@@ -315,7 +325,8 @@ function hideLauncherBubble(state: LauncherBubbleState): void {
 }
 
 function maybeMountLauncherBubble(wrap: HTMLElement): LauncherBubbleState | undefined {
-  if (launcherBubbleSeen()) {
+  const mobile = window.matchMedia('(width < 480px)');
+  if (mobile.matches || launcherBubbleSeen()) {
     return undefined;
   }
 
@@ -345,6 +356,9 @@ function maybeMountLauncherBubble(wrap: HTMLElement): LauncherBubbleState | unde
   };
 
   dismiss.addEventListener('click', dismissBubble);
+  mobile.addEventListener?.('change', (event) => {
+    if (event.matches) dismissBubble();
+  });
 
   state.autoHideId = setTimeout(dismissBubble, LAUNCHER_BUBBLE_AUTO_HIDE_MS);
   return state;
@@ -398,6 +412,14 @@ export function mountLauncher(host: HTMLElement, page: 'main' | 'v4'): HTMLButto
 
   wrap.appendChild(button);
   wrap.appendChild(createDock(page));
+  if (bubbleState !== undefined) {
+    const dismissBubble = (): void => hideLauncherBubble(bubbleState);
+    for (const control of [button, ...wrap.querySelectorAll('.quick-dock__button')]) {
+      for (const event of ['pointerenter', 'mouseenter', 'focus', 'pointerdown', 'keydown', 'click']) {
+        control.addEventListener(event, dismissBubble);
+      }
+    }
+  }
   shadow.appendChild(wrap);
   return button;
 }

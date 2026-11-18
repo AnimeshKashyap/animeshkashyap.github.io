@@ -149,8 +149,56 @@ describe('mountLauncher greeting bubble', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     browser.reset();
     vi.useRealTimers();
+  });
+
+  it.each(['main', 'v4'] as const)('skips mobile greeting and its timer on %s without consuming the session', (page) => {
+    vi.useFakeTimers();
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+    const { shadow } = mountLauncherOnPage(page);
+    expect(getBubble(shadow)).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(browser.sessionData.has(LAUNCHER_BUBBLE_SESSION_KEY)).toBe(false);
+    expect(buildLauncherStyles(page)).toContain('@media (width < 480px)');
+    expect(buildLauncherStyles(page)).toContain('.launcher-bubble { display: none; }');
+    expect(window.matchMedia).toHaveBeenCalledWith('(width < 480px)');
+  });
+
+  it('hides and cancels the timer on resizing below 480px, never resurrecting the greeting', () => {
+    vi.useFakeTimers();
+    let change: (event: { matches: boolean }) => void = () => {};
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      addEventListener: (_type: string, listener: typeof change) => { change = listener; },
+    } as unknown as MediaQueryList);
+    const { shadow } = mountLauncherOnPage('main');
+    expect(vi.getTimerCount()).toBe(1);
+    change({ matches: true });
+    expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    change({ matches: false });
+    expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it.each(['pointerenter', 'mouseenter', 'focus', 'pointerdown', 'keydown'])('suppresses greeting on every launcher/dock %s before tooltip display', (event) => {
+    vi.useFakeTimers();
+    for (const index of [0, 1, 2, 3, 4, 5]) {
+      browser.sessionData.clear();
+      const { launcher, shadow } = mountLauncherOnPage('main');
+      const controls = [launcher, ...shadow.querySelector('.quick-dock')!.querySelectorAll('.quick-dock__button')];
+      controls[index].dispatchEvent(event);
+      expect(getBubble(shadow)?.hasAttribute('hidden')).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+      expect(togglePanel).not.toHaveBeenCalled();
+    }
+  });
+
+  it.each(['main', 'v4'] as const)('synchronously suppresses programmatic panel opens and competing tooltips on %s', (page) => {
+    const styles = buildLauncherStyles(page);
+    expect(styles).toContain('.launcher-wrap:has(.launcher[aria-expanded="true"]) .launcher-bubble');
+    expect(styles).toContain('.launcher-wrap:has(.launcher:hover, .launcher:focus-visible, .quick-dock:hover, .quick-dock:focus-within) .launcher-bubble {\n  display: none;');
   });
 
   it.each(['left', 'right'] as const)('mirrors configured %s side onto the shadow host', (side) => {
